@@ -16,16 +16,15 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>
 */
 
-import { frameStore } from "../../globals.js";
-import { BitReader, reverse } from "../../utilities.js";
-import Parser from "../Parser.js";
-import VorbisFrame from "./VorbisFrame.js";
-import VorbisHeader from "./VorbisHeader.js";
+import { frameStore } from "../../globals";
+import { BitReader, reverse } from "../../utilities";
+import Parser from "../Parser";
+import VorbisFrame from "./VorbisFrame";
+import VorbisHeader from "./VorbisHeader";
 
 export default class VorbisParser extends Parser {
   constructor(codecParser, headerCache) {
     super(codecParser, headerCache);
-    this.Frame = VorbisFrame;
 
     this._identificationHeader = null;
 
@@ -58,7 +57,7 @@ export default class VorbisParser extends Parser {
       }
     } else {
       oggPage.codecFrames = oggPageSegments.map((segment) => {
-        const header = VorbisHeader.getHeaderFromUint8Array(
+        const header = VorbisHeader.getHeaderFromUint8Array( // TODO: Use function
           this._identificationHeader,
           this._headerCache
         );

@@ -18,9 +18,10 @@
 
 import { headerStore } from "../../globals.js";
 import { flacCrc16 } from "../../utilities.js";
-import CodecFrame from "../CodecFrame.js";
+import { CodecFrame } from "../CodecFrame.js";
+import FLACHeader from "./FLACHeader.js";
 
-export default class FLACFrame extends CodecFrame {
+export default class FLACFrame extends CodecFrame<FLACHeader> {
   static getFrameFooterCrc16(data) {
     return (data[data.length - 2] << 8) + data[data.length - 1];
   }

@@ -16,19 +16,19 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>
 */
 
-import { frameStore, headerStore } from "../../globals.js";
-import Parser from "../Parser.js";
-import FLACFrame from "./FLACFrame.js";
-import FLACHeader from "./FLACHeader.js";
+import { CodecParser } from "../../CodecParser";
+import { frameStore, headerStore } from "../../globals";
+import HeaderCache from "../HeaderCache";
+import Parser from "../Parser";
+import FLACFrame from "./FLACFrame";
+import FLACHeader, { getHeader } from "./FLACHeader";
 
 const MIN_FLAC_FRAME_SIZE = 2;
 const MAX_FLAC_FRAME_SIZE = 512 * 1024;
 
 export default class FLACParser extends Parser {
-  constructor(codecParser, onCodecUpdate) {
-    super(codecParser, onCodecUpdate);
-    this.Frame = FLACFrame;
-    this.Header = FLACHeader;
+  constructor(codecParser: CodecParser, headerCache: HeaderCache, onCodec) {
+    super(codecParser, headerCache);
   }
 
   get codec() {
@@ -57,7 +57,7 @@ export default class FLACParser extends Parser {
   *parseFrame() {
     // find the first valid frame header
     do {
-      const header = yield* FLACHeader.getHeader(
+      const header = yield* getHeader(
         this._codecParser,
         this._headerCache,
         0
@@ -72,7 +72,7 @@ export default class FLACParser extends Parser {
         while (nextHeaderOffset <= MAX_FLAC_FRAME_SIZE) {
           if (
             this._codecParser._flushing ||
-            (yield* FLACHeader.getHeader(
+            (yield* getHeader(
               this._codecParser,
               this._headerCache,
               nextHeaderOffset
@@ -129,7 +129,7 @@ export default class FLACParser extends Parser {
       oggPage.codecFrames = frameStore
         .get(oggPage)
         .segments.map((segment) => {
-          const header = FLACHeader.getHeaderFromUint8Array(
+          const header = FLACHeader.getHeaderFromUint8Array( // TODO: Use function
             segment,
             this._headerCache
           );

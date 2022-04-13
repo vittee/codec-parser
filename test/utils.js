@@ -1,7 +1,7 @@
-import fs from "fs/promises";
-import path from "path";
+const fs = require("fs/promises");
+const path = require("path");
 
-export const getBuffArray = (buffer, increment) => {
+const getBuffArray = (buffer, increment) => {
   let rawBuffs = [];
 
   for (let currPos = 0; currPos <= buffer.length; currPos += increment) {
@@ -11,7 +11,7 @@ export const getBuffArray = (buffer, increment) => {
   return rawBuffs;
 };
 
-export const writeResults = async (
+const writeResults = async (
   frames,
   mimeType,
   outputPath,
@@ -48,3 +48,8 @@ export const writeResults = async (
     JSON.stringify(framesWithoutData, null, 2)
   );
 };
+
+module.exports = {
+  getBuffArray,
+  writeResults
+}

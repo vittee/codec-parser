@@ -16,21 +16,21 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>
 */
 
-import CodecFrame from "../CodecFrame.js";
-import MPEGHeader from "./MPEGHeader.js";
+import { CodecParser } from "../../CodecParser";
+import { CodecFrame, getCodecFrame } from "../CodecFrame";
+import HeaderCache from "../HeaderCache";
+import MPEGHeader, { getHeader } from "./MPEGHeader";
 
-export default class MPEGFrame extends CodecFrame {
-  static *getFrame(codecParser, headerCache, readOffset) {
-    return yield* super.getFrame(
-      MPEGHeader,
-      MPEGFrame,
-      codecParser,
-      headerCache,
-      readOffset
-    );
-  }
+export function *getFrame(codecParser: CodecParser, headerCache: HeaderCache, readOffset: number) {
+  return yield* getCodecFrame(
+    getHeader,
+    MPEGFrame,
+    codecParser,
+    headerCache,
+    readOffset
+  );
+}
 
-  constructor(header, frame, samples) {
-    super(header, frame, samples);
-  }
+export default class MPEGFrame extends CodecFrame<MPEGHeader> {
+
 }

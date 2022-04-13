@@ -16,15 +16,15 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>
 */
 
-import Parser from "../Parser.js";
-import MPEGFrame from "./MPEGFrame.js";
-import MPEGHeader from "./MPEGHeader.js";
+import { CodecParser } from "../../CodecParser";
+import HeaderCache from "../HeaderCache";
+import Parser from "../Parser";
+import { getFrame } from "./MPEGFrame";
+import { getHeader } from "./MPEGHeader";
 
 export default class MPEGParser extends Parser {
-  constructor(codecParser, headerCache, onCodec) {
-    super(codecParser, headerCache);
-    this.Frame = MPEGFrame;
-    this.Header = MPEGHeader;
+  constructor(codecParser: CodecParser, headerCache: HeaderCache, onCodec) {
+    super(codecParser, headerCache, getFrame, getHeader);
 
     onCodec(this.codec);
   }

@@ -16,10 +16,11 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>
 */
 
-import CodecFrame from "../CodecFrame.js";
+import { CodecFrame } from "../CodecFrame";
+import OpusHeader from "./OpusHeader";
 
-export default class OpusFrame extends CodecFrame {
-  constructor(data, header) {
+export default class OpusFrame extends CodecFrame<OpusHeader> {
+  constructor(data: Uint8Array, header: OpusHeader) {
     super(
       header,
       data,

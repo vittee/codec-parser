@@ -16,43 +16,59 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>
 */
 
-import { frameStore, headerStore } from "../globals.js";
-import Frame from "../containers/Frame.js";
+import { frameStore, headerStore } from "../globals";
+import Frame, { Header } from "../containers/Frame";
+import CodecHeader from "./CodecHeader";
+import { CodecParser } from "../CodecParser";
+import HeaderCache from "./HeaderCache";
+import { GetHeader } from "./Parser";
 
-export default class CodecFrame extends Frame {
-  static *getFrame(Header, Frame, codecParser, headerCache, readOffset) {
-    const header = yield* Header.getHeader(
-      codecParser,
-      headerCache,
-      readOffset
-    );
+export type FrameFactory<F extends Frame, H extends CodecHeader> = new (header: H, data: Uint8Array, samples: number) => F;
 
-    if (header) {
-      const frameLength = headerStore.get(header).frameLength;
-      const samples = headerStore.get(header).samples;
+export function *getCodecFrame(getHeader: GetHeader, frameFactory: FrameFactory<any, any>, codecParser: CodecParser, headerCache: HeaderCache, readOffset: number): Generator {
+  const header = yield* getHeader(
+    codecParser,
+    headerCache,
+    readOffset
+  );
 
-      const frame = (yield* codecParser.readRawData(
-        frameLength,
-        readOffset
-      )).subarray(0, frameLength);
-
-      return new Frame(header, frame, samples);
-    } else {
-      return null;
-    }
+  if (!header) {
+    return null;
   }
 
-  constructor(header, data, samples) {
-    super(header, data);
+  const frameLength = headerStore.get(header).frameLength;
+  const samples = headerStore.get(header).samples;
+
+  const frame = (yield* codecParser.readRawData(
+    frameLength,
+    readOffset
+  )).subarray(0, frameLength);
+
+  return new frameFactory(header, frame, samples);
+}
+
+export class CodecFrame<H extends CodecHeader = CodecHeader> extends Frame<H> {
+  constructor(header: H, data: Uint8Array, samples: number) {
+    super(header, data, samples);
 
     this.header = header;
     this.samples = samples;
     this.duration = (samples / header.sampleRate) * 1000;
-    this.frameNumber = null;
-    this.totalBytesOut = null;
-    this.totalSamples = null;
-    this.totalDuration = null;
+    this.frameNumber = 0;
+    this.totalBytesOut = 0;
+    this.totalSamples = 0;
+    this.totalDuration = 0;
 
     frameStore.get(this).length = data.length;
   }
+
+  header: H;
+
+  crc32: number = 0;
+
+  samples: number;
+
+  duration: number;
+
+  frameNumber: number;
 }

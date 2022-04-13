@@ -16,7 +16,7 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>
 */
 
-const getCrcTable = (crcTable, crcInitialValueFunction, crcFunction) => {
+const getCrcTable = (crcTable: Uint8Array | Uint16Array | Uint32Array, crcInitialValueFunction: (b: number) => number, crcFunction: (crc: number) => number) => {
   for (let byte = 0; byte < crcTable.length; byte++) {
     let crc = crcInitialValueFunction(byte);
 
@@ -64,7 +64,7 @@ for (let i = 0; i < 15; i++) {
   }
 }
 
-const crc8 = (data) => {
+const crc8 = (data: Uint8Array) => {
   let crc = 0;
   const dataLength = data.length;
 
@@ -73,7 +73,7 @@ const crc8 = (data) => {
   return crc;
 };
 
-const flacCrc16 = (data) => {
+const flacCrc16 = (data: Uint8Array) => {
   const dataLength = data.length;
   const crcChunkSize = dataLength - 16;
   let crc = 0;
@@ -106,7 +106,7 @@ const flacCrc16 = (data) => {
   return crc;
 };
 
-const crc32 = (data) => {
+const crc32 = (data: Uint8Array) => {
   const dataLength = data.length;
   const crcChunkSize = dataLength - 16;
   let crc = 0;
@@ -137,7 +137,7 @@ const crc32 = (data) => {
   return crc ^ -1;
 };
 
-const concatBuffers = (...buffers) => {
+const concatBuffers = (...buffers: Uint8Array[]) => {
   const buffer = new Uint8Array(
     buffers.reduce((acc, buf) => acc + buf.length, 0)
   );
@@ -150,11 +150,11 @@ const concatBuffers = (...buffers) => {
   return buffer;
 };
 
-const bytesToString = (bytes) => String.fromCharCode(...bytes);
+const bytesToString = (bytes: number[]) => String.fromCharCode(...bytes);
 
 // prettier-ignore
 const reverseTable = [0x0,0x8,0x4,0xc,0x2,0xa,0x6,0xe,0x1,0x9,0x5,0xd,0x3,0xb,0x7,0xf];
-const reverse = (val) =>
+const reverse = (val: number) =>
   (reverseTable[val & 0b1111] << 4) | reverseTable[val >> 4];
 
 class BitReader {

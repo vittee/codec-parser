@@ -16,15 +16,20 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>
 */
 
-import { frameStore } from "../globals.js";
+import { frameStore } from "../globals";
 
-/**
- * @abstract
- */
-export default class Frame {
-  constructor(header, data) {
+export class Header {
+
+}
+
+export default class Frame<H extends Header> {
+  constructor(header: H, readonly data: Uint8Array, _samples: number) {
     frameStore.set(this, { header });
-
-    this.data = data;
   }
+
+  totalBytesOut: number = 0;
+
+  totalSamples: number = 0;
+
+  totalDuration: number = 0;
 }

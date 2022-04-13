@@ -16,28 +16,51 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>
 */
 
-import { frameStore } from "../globals.js";
+import { CodecParser } from "../CodecParser";
+import Frame, { Header } from "../containers/Frame";
+import { frameStore } from "../globals";
+import HeaderCache from "./HeaderCache";
+
+export type GetHeader = (codecParser: CodecParser, headerCache: HeaderCache, readOffset: number) => Generator;
+export type GetFrame = (codecParcer: CodecParser, headerCache: HeaderCache, readOffset: number) => Generator;
+
+type FrameHeaderOf<F extends Frame<any>> = F extends Frame<infer H> ? H extends Header ? H : never : never;
 
 /**
  * @abstract
  * @description Abstract class containing methods for parsing codec frames
  */
-export default class Parser {
-  constructor(codecParser, headerCache) {
+export default class Parser<F extends Frame<any>, H = FrameHeaderOf<F>> {  
+  private _codecParser: CodecParser;
+  private _headerCache: HeaderCache;
+
+  constructor(codecParser: CodecParser, headerCache: HeaderCache, private getFrame?: GetFrame, private getHeader?: GetHeader) {
     this._codecParser = codecParser;
     this._headerCache = headerCache;
   }
 
+  get codec() {
+    return "";
+  }
+
+  *parseFrame(): Generator<F | null, F | null> {
+    return null;
+  }
+
   *syncFrame() {
-    let frame;
+    let frame: F;
 
     do {
-      frame = yield* this.Frame.getFrame(
+      frame = yield* this.getFrame(
         this._codecParser,
         this._headerCache,
         0
       );
-      if (frame) return frame;
+      
+      if (frame) {
+        return frame;
+      }
+      
       this._codecParser.incrementRawData(1); // increment to continue syncing
     } while (true);
   }
@@ -45,17 +68,15 @@ export default class Parser {
   /**
    * @description Searches for Frames within bytes containing a sequence of known codec frames.
    * @param {boolean} ignoreNextFrame Set to true to return frames even if the next frame may not exist at the expected location
-   * @returns {Frame}
+   * @returns {F}
    */
-  *fixedLengthFrameSync(ignoreNextFrame) {
+  *fixedLengthFrameSync(ignoreNextFrame: boolean): Generator<F, unknown, F> {
     let frame = yield* this.syncFrame();
     const frameLength = frameStore.get(frame).length;
 
-    if (
-      ignoreNextFrame ||
-      this._codecParser._flushing ||
+    if (ignoreNextFrame || this._codecParser.isFlushing ||
       // check if there is a frame right after this one
-      (yield* this.Header.getHeader(
+      (yield* this.getHeader(
         this._codecParser,
         this._headerCache,
         frameLength

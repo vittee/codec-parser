@@ -16,16 +16,16 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>
 */
 
-import { frameStore } from "../../globals.js";
-import Parser from "../Parser.js";
-import OpusFrame from "./OpusFrame.js";
-import OpusHeader from "./OpusHeader.js";
+import { CodecParser } from "../../CodecParser";
+import { frameStore } from "../../globals";
+import HeaderCache from "../HeaderCache";
+import Parser from "../Parser";
+import OpusFrame from "./OpusFrame";
+import OpusHeader from "./OpusHeader";
 
 export default class OpusParser extends Parser {
-  constructor(codecParser, headerCache) {
+  constructor(codecParser: CodecParser, headerCache: HeaderCache) {
     super(codecParser, headerCache);
-    this.Frame = OpusFrame;
-    this.Header = OpusHeader;
 
     this._identificationHeader = null;
   }
@@ -47,7 +47,7 @@ export default class OpusParser extends Parser {
       // OpusTags
     } else {
       oggPage.codecFrames = frameStore.get(oggPage).segments.map((segment) => {
-        const header = OpusHeader.getHeaderFromUint8Array(
+        const header = OpusHeader.getHeaderFromUint8Array( // TODO: Use function
           this._identificationHeader,
           segment,
           this._headerCache

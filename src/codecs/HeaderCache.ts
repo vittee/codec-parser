@@ -16,8 +16,18 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>
 */
 
+import { OnCodecUpdate } from "../types";
+
 export default class HeaderCache {
-  constructor(onCodecUpdate) {
+  _onCodecUpdate: any;
+  _isEnabled = false;
+  _headerCache!: Map<any, any>;
+  _codecUpdateData!: WeakMap<object, any>;
+  _codecShouldUpdate = false;
+  _currentHeader!: string;
+  _bitrate = 0;
+
+  constructor(onCodecUpdate: OnCodecUpdate) {
     this._onCodecUpdate = onCodecUpdate;
     this.reset();
   }
@@ -30,11 +40,11 @@ export default class HeaderCache {
     this._headerCache = new Map();
     this._codecUpdateData = new WeakMap();
     this._codecShouldUpdate = false;
-    this._bitrate = null;
+    this._bitrate = 0;
     this._isEnabled = false;
   }
 
-  checkCodecUpdate(bitrate, totalDuration) {
+  checkCodecUpdate(bitrate: number, totalDuration: number) {
     if (this._onCodecUpdate) {
       if (this._bitrate !== bitrate) {
         this._bitrate = bitrate;
@@ -57,14 +67,14 @@ export default class HeaderCache {
     }
   }
 
-  updateCurrentHeader(key) {
+  updateCurrentHeader(key: string) {
     if (this._onCodecUpdate && key !== this._currentHeader) {
       this._codecShouldUpdate = true;
       this._currentHeader = key;
     }
   }
 
-  getHeader(key) {
+  getHeader(key: string) {
     const header = this._headerCache.get(key);
 
     if (header) {
@@ -74,7 +84,7 @@ export default class HeaderCache {
     return header;
   }
 
-  setHeader(key, header, codecUpdateFields) {
+  setHeader(key: string, header, codecUpdateFields) {
     if (this._isEnabled) {
       this.updateCurrentHeader(key);
 

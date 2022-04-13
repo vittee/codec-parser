@@ -79,7 +79,7 @@ const channels = [
   `7.1 ${surround}`,
 ];
 
-export const getChannelMapping = (channelCount, ...mappings) =>
+export const getChannelMapping = (channelCount: number, ...mappings: string[]) =>
   `${channels[channelCount - 1]} (${mappings.join(mappingJoin)})`;
 
 // prettier-ignore

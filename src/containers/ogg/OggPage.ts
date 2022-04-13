@@ -16,35 +16,50 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>
 */
 
-import { headerStore, frameStore } from "../../globals.js";
-import Frame from "../Frame.js";
-import OggPageHeader from "./OggPageHeader.js";
+import { CodecParser } from "../../CodecParser";
+import { CodecFrame } from "../../codecs/CodecFrame";
+import HeaderCache from "../../codecs/HeaderCache";
+import { headerStore, frameStore } from "../../globals";
+import Frame from "../Frame";
+import { getHeader } from "./OggPageHeader";
 
-export default class OggPage extends Frame {
-  static *getFrame(codecParser, headerCache, readOffset) {
-    const header = yield* OggPageHeader.getHeader(
-      codecParser,
-      headerCache,
-      readOffset
+export function *getFrame(codecParser: CodecParser, headerCache: HeaderCache, readOffset: number): Generator {
+  const header = yield* getHeader(
+    codecParser,
+    headerCache,
+    readOffset
+  );
+
+  if (header) {
+    const frameLength = headerStore.get(header).frameLength;
+    const headerLength = headerStore.get(header).length;
+    const totalLength = headerLength + frameLength;
+
+    const rawData = (yield* codecParser.readRawData(totalLength, 0)).subarray(
+      0,
+      totalLength
     );
 
-    if (header) {
-      const frameLength = headerStore.get(header).frameLength;
-      const headerLength = headerStore.get(header).length;
-      const totalLength = headerLength + frameLength;
+    const frame = rawData.subarray(headerLength, totalLength);
 
-      const rawData = (yield* codecParser.readRawData(totalLength, 0)).subarray(
-        0,
-        totalLength
-      );
-
-      const frame = rawData.subarray(headerLength, totalLength);
-
-      return new OggPage(header, frame, rawData);
-    } else {
-      return null;
-    }
+    return new OggPage(header, frame, rawData);
+  } else {
+    return null;
   }
+}
+
+export default class OggPage extends Frame {
+  codecFrames: CodecFrame<any>[];
+  rawData: any;
+  absoluteGranulePosition: any;
+  crc32: any;
+  duration: number;
+  isContinuedPacket: any;
+  isFirstPage: any;
+  isLastPage: any;
+  pageSequenceNumber: any;
+  samples: number;
+  streamSerialNumber: any;
 
   constructor(header, frame, rawData) {
     super(header, frame);

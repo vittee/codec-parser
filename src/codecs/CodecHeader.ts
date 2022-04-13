@@ -16,19 +16,41 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>
 */
 
-import { headerStore } from "../globals.js";
+import { Header } from "../containers/Frame";
+import { headerStore } from "../globals";
 
-export default class CodecHeader {
-  /**
-   * @private
-   */
-  constructor(header) {
+export type RawCodecHeader = {
+  bitDepth: number;
+
+  bitrate: number;
+
+  channels: number;
+
+  channelMode: string;
+
+  sampleRate: number;
+}
+
+export default class CodecHeader extends Header {
+  constructor(header: RawCodecHeader) {
+    super();
+
     headerStore.set(this, header);
 
     this.bitDepth = header.bitDepth;
-    this.bitrate = null; // set during frame mapping
+    this.bitrate = null!; // set during frame mapping
     this.channels = header.channels;
     this.channelMode = header.channelMode;
     this.sampleRate = header.sampleRate;
   }
+
+  bitDepth: number;
+
+  bitrate: number;
+
+  channels: number;
+
+  channelMode: string; // TODO:
+
+  sampleRate: number;
 }

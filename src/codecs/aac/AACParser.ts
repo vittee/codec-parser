@@ -16,15 +16,15 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>
 */
 
-import Parser from "../Parser.js";
-import AACFrame from "./AACFrame.js";
-import AACHeader from "./AACHeader.js";
+import { CodecParser } from "../../CodecParser";
+import HeaderCache from "../HeaderCache";
+import Parser from "../Parser";
+import AACFrame, { getFrame } from "./AACFrame";
+import AACHeader, { getHeader } from "./AACHeader";
 
-export default class AACParser extends Parser {
-  constructor(codecParser, headerCache, onCodec) {
-    super(codecParser, headerCache);
-    this.Frame = AACFrame;
-    this.Header = AACHeader;
+export default class AACParser extends Parser<AACFrame> {
+  constructor(codecParser: CodecParser, headerCache: HeaderCache, onCodec) {
+    super(codecParser, headerCache, getFrame, getHeader);
 
     onCodec(this.codec);
   }

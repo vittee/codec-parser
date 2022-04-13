@@ -51,10 +51,10 @@ I  8   Coupled Stream Count (unsigned)
 J  8*C Channel Mapping
 */
 
-import { rate48000, vorbisOpusChannelMapping } from "../../constants.js";
-import { bytesToString } from "../../utilities.js";
+import { rate48000, vorbisOpusChannelMapping } from "../../constants";
+import { bytesToString } from "../../utilities";
 
-import CodecHeader from "../CodecHeader.js";
+import CodecHeader from "../CodecHeader";
 
 /* prettier-ignore */
 const channelMappingFamilies = {
@@ -127,6 +127,7 @@ const configTable = {
 };
 
 export default class OpusHeader extends CodecHeader {
+  // TODO: Extract to function
   static getHeaderFromUint8Array(data, packetData, headerCache) {
     const header = {};
 

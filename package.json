@@ -17,7 +17,8 @@
     "ogg-vorbis"
   ],
   "scripts": {
-    "test": "node --experimental-vm-modules node_modules/.bin/jest --maxWorkers=100% --coverage --no-color 2> test-results.txt && echo \"Open test-results.txt to view the test results\"",
+    "build": "tsc",
+    "test": "jest",
     "format": "prettier --write '**/*.js' --write 'package.json'"
   },
   "repository": {

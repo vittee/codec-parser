@@ -1,12 +1,15 @@
-import fs from "fs/promises";
-import path from "path";
-import { getBuffArray, writeResults } from "./utils.js";
+const fs = require("fs/promises");
+const path = require("path");
+const { getBuffArray, writeResults } = require("./utils.js");
 
-import CodecParser from "../index.js";
+const { CodecParser } = require("../out/CodecParser.js");
 
-const EXPECTED_PATH = new URL("expected-results", import.meta.url).pathname;
-const ACTUAL_PATH = new URL("actual-results", import.meta.url).pathname;
-const TEST_DATA_PATH = new URL("test-data", import.meta.url).pathname;
+// const EXPECTED_PATH = new URL("expected-results", import.meta.url).pathname;
+// const ACTUAL_PATH = new URL("actual-results", import.meta.url).pathname;
+// const TEST_DATA_PATH = new URL("test-data", import.meta.url).pathname;
+const EXPECTED_PATH = path.resolve(__dirname, 'expected-results');
+const ACTUAL_PATH = path.resolve(__dirname, 'actual-results');
+const TEST_DATA_PATH = path.resolve(__dirname, 'test-data');
 
 describe("CodecParser", () => {
   const assertFrames = async (actualFileName, expectedFileName) => {
@@ -154,16 +157,16 @@ describe("CodecParser", () => {
 
   describe("MP3 VBR", () => {
     testParser("mpeg.vbr.mp3", "audio/mpeg", "mpeg", 45);
-  });
+  });  
 
   describe("AAC", () => {
     testParser("aac.aac", "audio/aac", "aac", 0);
     testParser("aac.320", "audio/aac", "aac");
-  });
+  });  
 
   describe("Flac", () => {
     testParser("flac.flac", "audio/flac", "flac", 8430);
-  });
+  });    
 
   describe("Ogg", () => {
     const mimeType = "audio/ogg";
@@ -209,7 +212,7 @@ describe("CodecParser", () => {
           expect(frames).toEqual([]);
         }
       );
-    });
+    });    
 
     describe("Ogg Flac", () => {
       testParser("ogg.flac", mimeType, "flac", 0);
@@ -220,7 +223,7 @@ describe("CodecParser", () => {
       testParser("ogg.flac.blocksize_variable_1", mimeType, "flac", 0);
       testParser("ogg.flac.blocksize_variable_2", mimeType, "flac", 0);
       testParser("ogg.flac.utf8_frame_number", mimeType, "flac", 0);
-    });
+    });    
 
     describe("Ogg Opus", () => {
       testParser("ogg.opus", mimeType, "opus", 0);
@@ -228,14 +231,14 @@ describe("CodecParser", () => {
       testParser("ogg.opus.framesize_60", mimeType, "opus", 0);
       testParser("ogg.opus.surround", mimeType, "opus", 0);
       testParser("ogg.opus.channel_family_255", mimeType, "opus", 0);
-    });
+    });    
 
     describe("Ogg Vorbis", () => {
       testParser("ogg.vorbis", mimeType, "vorbis", 0);
       testParser("ogg.vorbis.extra_metadata", mimeType, "vorbis");
       testParser("ogg.vorbis.fishead", mimeType, "vorbis");
     });
-  });
+  });    
 
   describe("Unsupported Codecs", () => {
     it("should throw an error when an unsupported mimetype is passed in", () => {

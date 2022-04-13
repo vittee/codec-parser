@@ -16,24 +16,59 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>
 */
 
-import { crc32, concatBuffers } from "./utilities.js";
-import HeaderCache from "./codecs/HeaderCache.js";
-import MPEGParser from "./codecs/mpeg/MPEGParser.js";
-import AACParser from "./codecs/aac/AACParser.js";
-import FLACParser from "./codecs/flac/FLACParser.js";
-import OggParser from "./containers/ogg/OggParser.js";
+import { crc32, concatBuffers } from "./utilities";
+import HeaderCache from "./codecs/HeaderCache";
+import MPEGParser from "./codecs/mpeg/MPEGParser";
+import AACParser from "./codecs/aac/AACParser";
+import FLACParser from "./codecs/flac/FLACParser";
+import OggParser from "./containers/ogg/OggParser";
+import Parser from "./codecs/Parser";
+import { OnCodecUpdate } from "./types";
+import OggPage from "./containers/ogg/OggPage";
+import { CodecFrame } from "./codecs/CodecFrame";
 
 const noOp = () => {};
 
-export default class CodecParser {
-  constructor(mimeType, { onCodecUpdate, onCodec, enableLogging } = {}) {
-    this._inputMimeType = mimeType;
-    this._onCodec = onCodec || noOp;
-    this._onCodecUpdate = onCodecUpdate;
-    this._enableLogging = enableLogging;
+export type SupportedMimeTypes = 'audio/mpeg' | 'audio/aac' | 'audio/aacp' | 'audio/flac' | 'audio/ogg' | 'application/ogg';
+
+export type CodecParserOptions = {
+  onCodec?: any; // TODO:
+  onCodecUpdate?: any;
+  enableLogging?: boolean;
+}
+
+export class CodecParser {
+  private _flushing = false;
+
+  private _generator: ReturnType<typeof this._getGenerator>;
+  private _totalBytesIn: number = 0;
+  private _onCodecUpdate: OnCodecUpdate;
+  private _enableLogging: boolean | undefined;
+  private _onCodec: any;
+  private _frameNumber: number = 0;
+  private _currentReadPosition: number = 0;
+  private _totalSamples: number = 0;
+  private _totalBytesOut: number = 0;
+  private _sampleRate: number = 0;
+
+  private _parser!: Parser<any, any>;
+
+  private _rawData!: Uint8Array;
+
+  private _headerCache!: HeaderCache;
+
+
+  constructor(private _inputMimeType: SupportedMimeTypes, options: CodecParserOptions = {}) {
+    this._onCodec = options.onCodec || noOp;
+    this._onCodecUpdate = options.onCodecUpdate;
+    this._enableLogging = options.enableLogging;
 
     this._generator = this._getGenerator();
     this._generator.next();
+  }
+
+  get isFlushing() {
+    return this._flushing;
   }
 
   /**
@@ -50,7 +85,7 @@ export default class CodecParser {
    * @returns {Iterable<CodecFrame|OggPage>} Iterator that operates over the codec data.
    * @yields {CodecFrame|OggPage} Parsed codec or ogg page data
    */
-  *flush() {
+  *flush(): Iterable<CodecFrame | OggPage> {
     this._flushing = true;
 
     for (let i = this._generator.next(); i.value; i = this._generator.next()) {
@@ -70,13 +105,10 @@ export default class CodecParser {
    * @returns {Iterable<CodecFrame|OggPage>} Iterator that operates over the codec data.
    * @yields {CodecFrame|OggPage} Parsed codec or ogg page data
    */
-  *parseChunk(chunk) {
-    for (
-      let i = this._generator.next(chunk);
-      i.value;
-      i = this._generator.next()
-    ) {
-      yield i.value;
+  *parseChunk(chunk: Uint8Array): Iterable<CodecFrame<any> | OggPage> {
+    // This will end up being the rawData in Parser's parseFrame
+    for (let it = this._generator.next(chunk); it.value; it = this._generator.next()) {
+      yield it.value;
     }
   }
 
@@ -86,14 +118,14 @@ export default class CodecParser {
    * @param {Uint8Array} fileData Coded data to read
    * @returns {Array<CodecFrame|OggPage>} CodecFrames
    */
-  parseAll(fileData) {
+  parseAll(fileData: Uint8Array) {
     return [...this.parseChunk(fileData), ...this.flush()];
   }
 
   /**
    * @private
    */
-  *_getGenerator() {
+  *_getGenerator(): Generator<CodecFrame | OggPage, any> {
     this._headerCache = new HeaderCache(this._onCodecUpdate);
 
     if (this._inputMimeType.match(/aac/)) {
@@ -105,41 +137,44 @@ export default class CodecParser {
     } else if (this._inputMimeType.match(/ogg/)) {
       this._parser = new OggParser(this, this._headerCache, this._onCodec);
     } else {
-      throw new Error(`Unsupported Codec ${mimeType}`);
+      throw new Error(`Unsupported Codec ${this._inputMimeType}`);
     }
 
     this._frameNumber = 0;
     this._currentReadPosition = 0;
     this._totalBytesIn = 0;
-    this._totalBytesOut = 0;
+    this._totalBytesIn = 0;
     this._totalSamples = 0;
-    this._sampleRate = undefined;
+    this._sampleRate = 0;
 
     this._rawData = new Uint8Array(0);
 
     // start parsing out frames
-    while (true) {
+    for (;;) {
       const frame = yield* this._parser.parseFrame();
-      if (frame) yield frame;
+      if (frame) {
+        yield frame;
+      }
     }
   }
 
   /**
+   * The reader, called by anything that wants data
    * @protected
    * @param {number} minSize Minimum bytes to have present in buffer
    * @returns {Uint8Array} rawData
    */
-  *readRawData(minSize = 0, readOffset = 0) {
-    let rawData;
-
+  *readRawData(minSize: number = 0, readOffset: number = 0): Generator {
     while (this._rawData.length <= minSize + readOffset) {
-      rawData = yield;
+      const newData = yield; // Externally consume
 
-      if (this._flushing) return this._rawData.subarray(readOffset);
+      if (this._flushing) {
+        return this._rawData.subarray(readOffset);
+      }
 
-      if (rawData) {
-        this._totalBytesIn += rawData.length;
-        this._rawData = concatBuffers(this._rawData, rawData);
+      if (newData) {
+        this._totalBytesIn += newData.length;
+        this._rawData = concatBuffers(this._rawData, newData);
       }
     }
 
@@ -150,7 +185,7 @@ export default class CodecParser {
    * @protected
    * @param {number} increment Bytes to increment codec data
    */
-  incrementRawData(increment) {
+  incrementRawData(increment: number) {
     this._currentReadPosition += increment;
     this._rawData = this._rawData.subarray(increment);
   }
@@ -158,7 +193,7 @@ export default class CodecParser {
   /**
    * @protected
    */
-  mapCodecFrameStats(frame) {
+  mapCodecFrameStats(frame: CodecFrame) {
     this._sampleRate = frame.header.sampleRate;
 
     frame.header.bitrate = Math.round(frame.data.length / frame.duration) * 8;
@@ -180,8 +215,8 @@ export default class CodecParser {
   /**
    * @protected
    */
-  mapFrameStats(frame) {
-    if (frame.codecFrames) {
+  mapFrameStats(frame: CodecFrame | OggPage) {
+    if (frame instanceof OggPage) {
       // Ogg container
       frame.codecFrames.forEach((codecFrame) => {
         frame.duration += codecFrame.duration;
@@ -192,15 +227,16 @@ export default class CodecParser {
       frame.totalSamples = this._totalSamples;
       frame.totalDuration = (this._totalSamples / this._sampleRate) * 1000 || 0;
       frame.totalBytesOut = this._totalBytesOut;
-    } else {
-      this.mapCodecFrameStats(frame);
+      return;
     }
+    
+    this.mapCodecFrameStats(frame);    
   }
 
   /**
    * @private
    */
-  _log(logger, messages) {
+  _log(logger: (...args: any[]) => any, messages: any[]) {
     if (this._enableLogging) {
       const stats = [
         `codec:         ${this.codec}`,
@@ -228,14 +264,14 @@ export default class CodecParser {
   /**
    * @protected
    */
-  logWarning(...messages) {
+  logWarning(...messages: any[]) {
     this._log(console.warn, messages);
   }
 
   /**
    * @protected
    */
-  logError(...messages) {
+  logError(...messages: any[]) {
     this._log(console.error, messages);
   }
 }

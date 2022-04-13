@@ -16,11 +16,25 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>
 */
 
+import { CodecParser } from "../CodecParser";
+import HeaderCache from "../codecs/HeaderCache";
+
 // https://id3.org/Developer%20Information
 
+type ID3v2Header = {
+  version: string;
+  unsynchronizationFlag: boolean;
+  extendedHeaderFlag: boolean;
+  experimentalFlag: boolean;
+  footerPresent: boolean;
+  headerLength: 10;
+  dataLength: number;
+  length: number;
+}
+
 export default class ID3v2 {
-  static *getID3v2Header(codecParser, headerCache, readOffset) {
-    const header = { headerLength: 10 };
+  static *getID3v2Header(codecParser: CodecParser, _headerCache: HeaderCache, readOffset: number) {
+    const header: any = { headerLength: 10 };
 
     let data = yield* codecParser.readRawData(3, readOffset);
     // Byte (0-2 of 9)
@@ -72,7 +86,7 @@ export default class ID3v2 {
     return new ID3v2(header);
   }
 
-  constructor(header) {
+  constructor(header: ID3v2Header) {
     this.version = header.version;
     this.unsynchronizationFlag = header.unsynchronizationFlag;
     this.extendedHeaderFlag = header.extendedHeaderFlag;
@@ -80,4 +94,11 @@ export default class ID3v2 {
     this.footerPresent = header.footerPresent;
     this.length = header.length;
   }
+
+  readonly version: string;
+  readonly unsynchronizationFlag: boolean;
+  readonly extendedHeaderFlag: boolean;
+  readonly experimentalFlag: boolean;
+  readonly footerPresent: boolean;
+  readonly length: number;
 }

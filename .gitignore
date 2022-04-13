@@ -2,3 +2,5 @@ node_modules
 test-results.txt
 coverage
 actual-results/
+out/
+dist/

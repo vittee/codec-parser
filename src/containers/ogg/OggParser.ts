@@ -16,25 +16,28 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>
 */
 
-import { headerStore, frameStore } from "../../globals.js";
-import { bytesToString, concatBuffers } from "../../utilities.js";
+import { headerStore, frameStore } from "../../globals";
+import { bytesToString, concatBuffers } from "../../utilities";
 
-import Parser from "../../codecs/Parser.js";
-import OggPage from "./OggPage.js";
-import OggPageHeader from "./OggPageHeader.js";
+import Parser from "../../codecs/Parser";
+import OggPage, { getFrame } from "./OggPage";
+import OggPageHeader from "./OggPageHeader";
 
-import FLACParser from "../../codecs/flac/FLACParser.js";
-import OpusParser from "../../codecs/opus/OpusParser.js";
-import VorbisParser from "../../codecs/vorbis/VorbisParser.js";
+import FLACParser from "../../codecs/flac/FLACParser";
+import OpusParser from "../../codecs/opus/OpusParser";
+import VorbisParser from "../../codecs/vorbis/VorbisParser";
+import { CodecParser } from "../../CodecParser";
+import HeaderCache from "../../codecs/HeaderCache";
 
-export default class OggParser extends Parser {
-  constructor(codecParser, headerCache, onCodec) {
-    super(codecParser, headerCache);
+export default class OggParser extends Parser<typeof OggPageHeader> {
+  private _codec?: string;
+
+  constructor(codecParser: CodecParser, headerCache: HeaderCache, onCodec) {
+    super(codecParser, headerCache, getFrame);
 
     this._onCodec = onCodec;
     this.Frame = OggPage;
     this.Header = OggPageHeader;
-    this._codec = null;
     this._continuedPacket = new Uint8Array();
 
     this._pageSequenceNumber = 0;
@@ -44,9 +47,9 @@ export default class OggParser extends Parser {
     return this._codec || "";
   }
 
-  _updateCodec(codec, Parser) {
+  _updateCodec(codec: string, ParserClass: typeof Parser) {
     if (this._codec !== codec) {
-      this._parser = new Parser(this._codecParser, this._headerCache);
+      this._parser = new ParserClass(this._codecParser, this._headerCache);
       this._codec = codec;
       this._onCodec(codec);
     }
@@ -72,7 +75,7 @@ export default class OggParser extends Parser {
     }
   }
 
-  _checkPageSequenceNumber(oggPage) {
+  _checkPageSequenceNumber(oggPage: OggPage) {
     if (
       oggPage.pageSequenceNumber !== this._pageSequenceNumber + 1 &&
       this._pageSequenceNumber > 1 &&

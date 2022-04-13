@@ -49,102 +49,105 @@ L   n   Segment table (n=page_segments+26).
         
 */
 
-import { headerStore } from "../../globals.js";
+import CodecHeader from "../../codecs/CodecHeader";
+import { headerStore } from "../../globals";
 
-export default class OggPageHeader {
-  static *getHeader(codecParser, headerCache, readOffset) {
-    const header = {};
+export function *getHeader(codecParser, headerCache, readOffset) {
+  const header = {};
 
-    // Must be at least 28 bytes.
-    let data = yield* codecParser.readRawData(28, readOffset);
+  // Must be at least 28 bytes.
+  let data = yield* codecParser.readRawData(28, readOffset);
 
-    // Bytes (1-4 of 28)
-    // Frame sync (must equal OggS): `AAAAAAAA|AAAAAAAA|AAAAAAAA|AAAAAAAA`:
-    if (
-      data[0] !== 0x4f || // O
-      data[1] !== 0x67 || // g
-      data[2] !== 0x67 || // g
-      data[3] !== 0x53 //    S
-    ) {
-      return null;
-    }
-
-    // Byte (5 of 28)
-    // * `BBBBBBBB`: stream_structure_version
-    header.streamStructureVersion = data[4];
-
-    // Byte (6 of 28)
-    // * `00000CDE`
-    // * `00000...`: All zeros
-    // * `.....C..`: (0 no, 1 yes) last page of logical bitstream (eos)
-    // * `......D.`: (0 no, 1 yes) first page of logical bitstream (bos)
-    // * `.......E`: (0 no, 1 yes) continued packet
-    const zeros = data[5] & 0b11111000;
-    if (zeros) return null;
-
-    header.isLastPage = Boolean(data[5] & 0b00000100);
-    header.isFirstPage = Boolean(data[5] & 0b00000010);
-    header.isContinuedPacket = Boolean(data[5] & 0b00000001);
-
-    const view = new DataView(Uint8Array.from(data.subarray(0, 28)).buffer);
-
-    // Byte (7-14 of 28)
-    // * `FFFFFFFF|FFFFFFFF|FFFFFFFF|FFFFFFFF|FFFFFFFF|FFFFFFFF|FFFFFFFF|FFFFFFFF`
-    // * Absolute Granule Position
-
-    /**
-     * @todo Safari does not support getBigInt64, but it also doesn't support Ogg
-     */
-    try {
-      header.absoluteGranulePosition = view.getBigInt64(6, true);
-    } catch {}
-
-    // Byte (15-18 of 28)
-    // * `GGGGGGGG|GGGGGGGG|GGGGGGGG|GGGGGGGG`
-    // * Stream Serial Number
-    header.streamSerialNumber = view.getInt32(14, true);
-
-    // Byte (19-22 of 28)
-    // * `HHHHHHHH|HHHHHHHH|HHHHHHHH|HHHHHHHH`
-    // * Page Sequence Number
-    header.pageSequenceNumber = view.getInt32(18, true);
-
-    // Byte (23-26 of 28)
-    // * `IIIIIIII|IIIIIIII|IIIIIIII|IIIIIIII`
-    // * Page Checksum
-    header.pageChecksum = view.getInt32(22, true);
-
-    // Byte (27 of 28)
-    // * `JJJJJJJJ`: Number of page segments in the segment table
-    const pageSegmentTableLength = data[26];
-    header.length = pageSegmentTableLength + 27;
-
-    data = yield* codecParser.readRawData(header.length, readOffset); // read in the page segment table
-
-    header.frameLength = 0;
-    header.pageSegmentTable = [];
-    header.pageSegmentBytes = Uint8Array.from(data.subarray(27, header.length));
-
-    for (let i = 0, segmentLength = 0; i < pageSegmentTableLength; i++) {
-      const segmentByte = header.pageSegmentBytes[i];
-
-      header.frameLength += segmentByte;
-      segmentLength += segmentByte;
-
-      if (segmentByte !== 0xff || i === pageSegmentTableLength - 1) {
-        header.pageSegmentTable.push(segmentLength);
-        segmentLength = 0;
-      }
-    }
-
-    return new OggPageHeader(header);
+  // Bytes (1-4 of 28)
+  // Frame sync (must equal OggS): `AAAAAAAA|AAAAAAAA|AAAAAAAA|AAAAAAAA`:
+  if (
+    data[0] !== 0x4f || // O
+    data[1] !== 0x67 || // g
+    data[2] !== 0x67 || // g
+    data[3] !== 0x53 //    S
+  ) {
+    return null;
   }
 
+  // Byte (5 of 28)
+  // * `BBBBBBBB`: stream_structure_version
+  header.streamStructureVersion = data[4];
+
+  // Byte (6 of 28)
+  // * `00000CDE`
+  // * `00000...`: All zeros
+  // * `.....C..`: (0 no, 1 yes) last page of logical bitstream (eos)
+  // * `......D.`: (0 no, 1 yes) first page of logical bitstream (bos)
+  // * `.......E`: (0 no, 1 yes) continued packet
+  const zeros = data[5] & 0b11111000;
+  if (zeros) return null;
+
+  header.isLastPage = Boolean(data[5] & 0b00000100);
+  header.isFirstPage = Boolean(data[5] & 0b00000010);
+  header.isContinuedPacket = Boolean(data[5] & 0b00000001);
+
+  const view = new DataView(Uint8Array.from(data.subarray(0, 28)).buffer);
+
+  // Byte (7-14 of 28)
+  // * `FFFFFFFF|FFFFFFFF|FFFFFFFF|FFFFFFFF|FFFFFFFF|FFFFFFFF|FFFFFFFF|FFFFFFFF`
+  // * Absolute Granule Position
+
+  /**
+   * @todo Safari does not support getBigInt64, but it also doesn't support Ogg
+   */
+  try {
+    header.absoluteGranulePosition = view.getBigInt64(6, true);
+  } catch {}
+
+  // Byte (15-18 of 28)
+  // * `GGGGGGGG|GGGGGGGG|GGGGGGGG|GGGGGGGG`
+  // * Stream Serial Number
+  header.streamSerialNumber = view.getInt32(14, true);
+
+  // Byte (19-22 of 28)
+  // * `HHHHHHHH|HHHHHHHH|HHHHHHHH|HHHHHHHH`
+  // * Page Sequence Number
+  header.pageSequenceNumber = view.getInt32(18, true);
+
+  // Byte (23-26 of 28)
+  // * `IIIIIIII|IIIIIIII|IIIIIIII|IIIIIIII`
+  // * Page Checksum
+  header.pageChecksum = view.getInt32(22, true);
+
+  // Byte (27 of 28)
+  // * `JJJJJJJJ`: Number of page segments in the segment table
+  const pageSegmentTableLength = data[26];
+  header.length = pageSegmentTableLength + 27;
+
+  data = yield* codecParser.readRawData(header.length, readOffset); // read in the page segment table
+
+  header.frameLength = 0;
+  header.pageSegmentTable = [];
+  header.pageSegmentBytes = Uint8Array.from(data.subarray(27, header.length));
+
+  for (let i = 0, segmentLength = 0; i < pageSegmentTableLength; i++) {
+    const segmentByte = header.pageSegmentBytes[i];
+
+    header.frameLength += segmentByte;
+    segmentLength += segmentByte;
+
+    if (segmentByte !== 0xff || i === pageSegmentTableLength - 1) {
+      header.pageSegmentTable.push(segmentLength);
+      segmentLength = 0;
+    }
+  }
+
+  return new OggPageHeader(header);
+}
+
+export default class OggPageHeader extends CodecHeader {
   /**
    * @private
    * Call OggPageHeader.getHeader(Array<Uint8>) to get instance
    */
   constructor(header) {
+    super(header);
+
     headerStore.set(this, header);
 
     this.absoluteGranulePosition = header.absoluteGranulePosition;

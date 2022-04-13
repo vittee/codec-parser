@@ -35,10 +35,10 @@ J      4    blocksize 0
 K      1    Framing flag
 */
 
-import { vorbisOpusChannelMapping } from "../../constants.js";
-import { bytesToString } from "../../utilities.js";
+import { vorbisOpusChannelMapping } from "../../constants";
+import { bytesToString } from "../../utilities";
 
-import CodecHeader from "../CodecHeader.js";
+import CodecHeader from "../CodecHeader";
 
 const blockSizes = {
   // 0b0110: 64,
@@ -53,7 +53,7 @@ const blockSizes = {
 for (let i = 0; i < 8; i++) blockSizes[i + 6] = 2 ** (6 + i);
 
 export default class VorbisHeader extends CodecHeader {
-  static getHeaderFromUint8Array(data, headerCache) {
+  static getHeaderFromUint8Array(data, headerCache) { // TODO: Extract to function
     // Must be at least 30 bytes.
     if (data.length < 30)
       throw new Error("Out of data while inside an Ogg Page");
