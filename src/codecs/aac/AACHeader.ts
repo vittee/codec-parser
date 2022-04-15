@@ -44,8 +44,6 @@ Q  16  CRC if protection absent is 0
 import { headerStore } from "../../globals";
 import { bytesToString } from "../../utilities";
 import {
-  none,
-  sixteenBitCRC,
   channelMappings,
   getChannelMapping,
   monophonic,
@@ -87,7 +85,7 @@ const channelModes = [
 type RawAACHeader = RawCodecHeader & {
   mpegVersion: MpegVersion;
   validLayer: boolean;
-  protection: string;
+  protection: boolean;
   length: number;
   profileBits: number;
   sampleRateBits: number;
@@ -121,7 +119,7 @@ function makeHeader(data: Uint8Array) {
   if (!header.validLayer) return null;
 
   const protectionBit = data[1] & 0b00000001;
-  header.protection = protectionBit ? none : sixteenBitCRC;
+  header.protection = protectionBit ? false : true;
   header.length = protectionBit ? 7 : 9;
 
   // Byte (3 of 7)
@@ -268,7 +266,7 @@ export class AACHeader extends CodecHeader {
 
   mpegVersion: MpegVersion;
   validLayer: boolean;
-  protection: string;
+  protection: boolean;
   length: number;
   // profileBits: number;
   // sampleRateBits: number;
