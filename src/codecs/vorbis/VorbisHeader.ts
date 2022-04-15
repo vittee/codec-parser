@@ -38,7 +38,8 @@ K      1    Framing flag
 import { vorbisOpusChannelMapping } from "../../constants";
 import { bytesToString } from "../../utilities";
 
-import CodecHeader from "../CodecHeader";
+import CodecHeader, { RawCodecHeader } from "../CodecHeader";
+import HeaderCache from "../HeaderCache";
 
 const blockSizes: Record<number, number> = {
   // 0b0110: 64,
@@ -53,7 +54,18 @@ const blockSizes: Record<number, number> = {
 
 for (let i = 0; i < 8; i++) blockSizes[i + 6] = 2 ** (6 + i);
 
-export function getHeaderFromUint8Array(data, headerCache) { // TODO: Extract to function
+export type RawVorbisHeader = RawCodecHeader & {
+  length: number;
+  data: Uint8Array;
+  version: number;
+  bitrateMaximum: number;
+  bitrateNominal: number;
+  bitrateMinimum: number;
+  blocksize1: number;
+  blocksize0: number;
+}
+
+export function getHeaderFromUint8Array(data: Uint8Array, headerCache: HeaderCache) {
   // Must be at least 30 bytes.
   if (data.length < 30)
     throw new Error("Out of data while inside an Ogg Page");
@@ -63,10 +75,10 @@ export function getHeaderFromUint8Array(data, headerCache) { // TODO: Extract to
   const cachedHeader = headerCache.getHeader(key);
   if (cachedHeader) return new VorbisHeader(cachedHeader);
 
-  const header = { length: 30 };
+  const header = { length: 30 } as RawVorbisHeader;
 
   // Bytes (1-7 of 30): /01vorbis - Magic Signature
-  if (key.substr(0, 7) !== "\x01vorbis") {
+  if (key.substring(0, 7) !== "\x01vorbis") {
     return null;
   }
 
@@ -123,13 +135,21 @@ export function getHeaderFromUint8Array(data, headerCache) { // TODO: Extract to
 }
 
 export default class VorbisHeader extends CodecHeader {
+  bitrateMaximum: number;
+  bitrateMinimum: number;
+  bitrateNominal: number;
+  blocksize0: number;
+  blocksize1: number;
+  data: Uint8Array;
+  vorbisComments: Uint8Array;
+  vorbisSetup: Uint8Array;
 
 
   /**
    * @private
    * Call VorbisHeader.getHeader(Array<Uint8>) to get instance
    */
-  constructor(header) {
+  constructor(header: RawVorbisHeader) {
     super(header);
 
     this.bitrateMaximum = header.bitrateMaximum;
@@ -138,7 +158,7 @@ export default class VorbisHeader extends CodecHeader {
     this.blocksize0 = header.blocksize0;
     this.blocksize1 = header.blocksize1;
     this.data = header.data;
-    this.vorbisComments = null; // set during ogg parsing
-    this.vorbisSetup = null; // set during ogg parsing
+    this.vorbisComments = null!; // set during ogg parsing
+    this.vorbisSetup = null!; // set during ogg parsing
   }
 }

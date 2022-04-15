@@ -54,10 +54,11 @@ J  8*C Channel Mapping
 import { rate48000, vorbisOpusChannelMapping } from "../../constants";
 import { bytesToString } from "../../utilities";
 
-import CodecHeader from "../CodecHeader";
+import CodecHeader, { RawCodecHeader } from "../CodecHeader";
+import HeaderCache from "../HeaderCache";
 
 /* prettier-ignore */
-const channelMappingFamilies = {
+const channelMappingFamilies: Record<number, string[]> = {
   0b00000000: vorbisOpusChannelMapping.slice(0,2),
     /*
     0: "monophonic (mono)"
@@ -91,7 +92,7 @@ const fullBand = "fullband";
 // +-+-+-+-+-+-+-+-+
 // | config  |s| c |
 // +-+-+-+-+-+-+-+-+
-const configTable = {
+const configTable: Record<number, any> = {
   0b00000000: { mode: silkOnly, bandwidth: narrowBand, frameSize: 10 },
   0b00001000: { mode: silkOnly, bandwidth: narrowBand, frameSize: 20 },
   0b00010000: { mode: silkOnly, bandwidth: narrowBand, frameSize: 40 },
@@ -126,8 +127,26 @@ const configTable = {
   0b11111000: { mode: celtOnly, bandwidth: fullBand, frameSize: 20 },
 };
 
-export function getHeaderFromUint8Array(data, packetData, headerCache) {
-  const header = {};
+export type RawOpusHeader = RawCodecHeader & {
+  channelMappingFamily: number;
+  length: number;
+  data: Uint8Array;
+  preSkip: number;
+  inputSampleRate: number;
+  outputGain: number;
+  streamCount: number;
+  coupledStreamCount: number;
+  channelMappingTable: number[];
+  mode: string;
+  bandwidth: number;
+  frameSize: number;
+  frameCount: number;
+  isVbr: boolean;
+  hasOpusPadding: boolean;
+}
+
+export function getHeaderFromUint8Array(data: Uint8Array, packetData: Uint8Array, headerCache: HeaderCache) {
+  const header = {} as RawOpusHeader;
 
   // get length of header
   // Byte (10 of 19)
@@ -137,11 +156,11 @@ export function getHeaderFromUint8Array(data, packetData, headerCache) {
   // * `GGGGGGGG`: Channel Mapping Family
   header.channelMappingFamily = data[18];
 
-  header.length =
-    header.channelMappingFamily !== 0 ? 21 + header.channels : 19;
+  header.length = header.channelMappingFamily !== 0 ? 21 + header.channels : 19;
 
-  if (data.length < header.length)
+  if (data.length < header.length) {
     throw new Error("Out of data while inside an Ogg Page");
+  }
 
   // Page Segment Bytes (1-2)
   // * `AAAAA...`: Packet config
@@ -195,10 +214,7 @@ export function getHeaderFromUint8Array(data, packetData, headerCache) {
   // * `GGGGGGGG`: Channel Mapping Family
   // set earlier to determine length
   if (header.channelMappingFamily in channelMappingFamilies) {
-    header.channelMode =
-      channelMappingFamilies[header.channelMappingFamily][
-        header.channels - 1
-      ];
+    header.channelMode = channelMappingFamilies[header.channelMappingFamily][header.channels - 1];
     if (!header.channelMode) return null;
   }
 
@@ -213,7 +229,7 @@ export function getHeaderFromUint8Array(data, packetData, headerCache) {
     header.channelMappingTable = [...data.subarray(21, header.channels + 21)];
   }
 
-  const packetConfig = configTable[0b11111000 & packetData[0]];
+  const packetConfig: { mode: string, bandwidth: number, frameSize: number } = configTable[0b11111000 & packetData[0]];
   header.mode = packetConfig.mode;
   header.bandwidth = packetConfig.bandwidth;
   header.frameSize = packetConfig.frameSize;
@@ -254,12 +270,26 @@ export function getHeaderFromUint8Array(data, packetData, headerCache) {
 }
 
 export default class OpusHeader extends CodecHeader {
+  data: Uint8Array;
+  bandwidth: number;
+  channelMappingFamily: number;
+  channelMappingTable: number[];
+  coupledStreamCount: number;
+  frameCount: number;
+  frameSize: number;
+  hasOpusPadding: boolean;
+  inputSampleRate: number;
+  isVbr: boolean;
+  mode: string;
+  outputGain: number;
+  preSkip: number;
+  streamCount: number;
 
   /**
    * @private
    * Call OpusHeader.getHeader(Array<Uint8>) to get instance
    */
-  constructor(header) {
+  constructor(header: RawOpusHeader) {
     super(header);
 
     this.data = header.data;

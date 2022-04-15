@@ -158,7 +158,7 @@ const reverse = (val: number) =>
   (reverseTable[val & 0b1111] << 4) | reverseTable[val >> 4];
 
 class BitReader {
-  private position: number;
+  position: number;
 
   constructor(private data: Uint8Array) {
     this.position = data.length * 8;

@@ -39,7 +39,7 @@ export default class Parser<F extends Frame<any>, H = FrameHeaderOf<F>> {
     return "";
   }
 
-  *parseFrame(): Generator<Uint8Array | undefined, F | null> {
+  *parseFrame(): Generator<Uint8Array | undefined, F | null | undefined> {
     return null;
   }
 

@@ -35,7 +35,7 @@ export default class OggParser extends Parser<OggPage> {
   private _onCodec: OnCodec;
   private _continuedPacket: Uint8Array;
   private _pageSequenceNumber: number;
-  private _parser!: Parser<any, any>;
+  private _parser!: OpusParser | FLACParser | VorbisParser;
 
   constructor(codecParser: CodecParser, headerCache: HeaderCache, onCodec: OnCodec) {
     super(codecParser, headerCache, getFrame);
@@ -52,7 +52,7 @@ export default class OggParser extends Parser<OggPage> {
 
   _updateCodec(codec: string, ParserClass: typeof Parser) { // TODO: newable
     if (this._codec !== codec) {
-      this._parser = new ParserClass(this._codecParser, this._headerCache);
+      this._parser = new ParserClass(this._codecParser, this._headerCache) as any;
       this._codec = codec;
       this._onCodec(codec);
     }
@@ -67,12 +67,15 @@ export default class OggParser extends Parser<OggPage> {
       case "index\0\0\0":
         return false; // ignore ogg skeleton packets
       case "OpusHead":
+        // @ts-ignore
         this._updateCodec("opus", OpusParser);
         return true;
       case /^\x7fFLAC/.test(idString) && idString:
+        // @ts-ignore
         this._updateCodec("flac", FLACParser);
         return true;
       case /^\x01vorbis/.test(idString) && idString:
+        // @ts-ignore
         this._updateCodec("vorbis", VorbisParser);
         return true;
     }

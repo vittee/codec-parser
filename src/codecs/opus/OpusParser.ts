@@ -17,17 +17,20 @@
 */
 
 import { CodecParser } from "../../CodecParser";
+import OggPage from "../../containers/ogg/OggPage";
 import { frameStore } from "../../globals";
 import HeaderCache from "../HeaderCache";
 import Parser from "../Parser";
 import OpusFrame from "./OpusFrame";
-import OpusHeader, { getHeaderFromUint8Array } from "./OpusHeader";
+import { getHeaderFromUint8Array } from "./OpusHeader";
 
 export default class OpusParser extends Parser<OpusFrame> {
+  _identificationHeader: Uint8Array;
+
   constructor(codecParser: CodecParser, headerCache: HeaderCache) {
     super(codecParser, headerCache);
 
-    this._identificationHeader = null;
+    this._identificationHeader = null!;
   }
 
   get codec() {
@@ -37,7 +40,7 @@ export default class OpusParser extends Parser<OpusFrame> {
   /**
    * @todo implement continued page support
    */
-  parseOggPage(oggPage) {
+  parseOggPage(oggPage: OggPage) {
     if (oggPage.pageSequenceNumber === 0) {
       // Identification header
 
@@ -46,20 +49,22 @@ export default class OpusParser extends Parser<OpusFrame> {
     } else if (oggPage.pageSequenceNumber === 1) {
       // OpusTags
     } else {
-      oggPage.codecFrames = frameStore.get(oggPage).segments.map((segment) => {
-        const header = getHeaderFromUint8Array( // TODO: Use function
+      oggPage.codecFrames = (frameStore.get(oggPage).segments as Uint8Array[]).map((segment) => {
+        const header = getHeaderFromUint8Array(
           this._identificationHeader,
           segment,
           this._headerCache
         );
 
-        if (header) return new OpusFrame(segment, header);
+        if (header) {
+          return new OpusFrame(segment, header);
+        }
 
         this._codecParser.logError(
           "Failed to parse Ogg Opus Header",
           "Not a valid Ogg Opus file"
         );
-      });
+      }) as OpusFrame[];
     }
 
     return oggPage;

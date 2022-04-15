@@ -85,7 +85,7 @@ export default class HeaderCache {
     return header;
   }
 
-  setHeader(key: string, header: RawCodecHeader, codecUpdateFields) {
+  setHeader(key: string, header: RawCodecHeader, codecUpdateFields: any) {
     if (this._isEnabled) {
       this.updateCurrentHeader(key);
 

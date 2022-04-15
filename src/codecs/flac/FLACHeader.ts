@@ -115,7 +115,7 @@ const sampleRate: Record<number, number> = {
   // 0b00001100: "8-bit sample rate (in kHz) from end of header",
   // 0b00001101: "16-bit sample rate (in Hz) from end of header",
   // 0b00001110: "16-bit sample rate (in tens of Hz) from end of header",
-  0b00001111: bad,
+  0b00001111: bad as unknown as number,
 };
 
 /* prettier-ignore */
@@ -372,7 +372,7 @@ function decodeUTF8Int(data: Uint8Array) {
   return { value, length };
 }
 
-export function getHeaderFromUint8Array(data, headerCache) {
+export function getHeaderFromUint8Array(data: Uint8Array, headerCache: HeaderCache) {
   const codecParserStub = {
     readRawData: function* () {
       return data;

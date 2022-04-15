@@ -16,17 +16,27 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>
 */
 
+import { CodecParser } from "../../CodecParser";
+import OggPage from "../../containers/ogg/OggPage";
 import { frameStore } from "../../globals";
 import { BitReader, reverse } from "../../utilities";
+import HeaderCache from "../HeaderCache";
 import Parser from "../Parser";
 import VorbisFrame from "./VorbisFrame";
 import VorbisHeader, { getHeaderFromUint8Array } from "./VorbisHeader";
 
 export default class VorbisParser extends Parser<VorbisFrame> {
-  constructor(codecParser, headerCache) {
+  _identificationHeader: Uint8Array;
+  _mode: any;
+  _prevBlockSize: number;
+  _currBlockSize: number;
+  _vorbisComments!: Uint8Array;
+  _vorbisSetup!: Uint8Array;
+
+  constructor(codecParser: CodecParser, headerCache: HeaderCache) {
     super(codecParser, headerCache);
 
-    this._identificationHeader = null;
+    this._identificationHeader = null!;
 
     this._mode = {
       count: 0,
@@ -39,7 +49,7 @@ export default class VorbisParser extends Parser<VorbisFrame> {
     return "vorbis";
   }
 
-  parseOggPage(oggPage) {
+  parseOggPage(oggPage: OggPage) {
     const oggPageSegments = frameStore.get(oggPage).segments as Uint8Array[];
 
     if (oggPage.pageSequenceNumber === 0) {
@@ -77,13 +87,13 @@ export default class VorbisParser extends Parser<VorbisFrame> {
           "Failed to parse Ogg Vorbis Header",
           "Not a valid Ogg Vorbis file"
         );
-      });
+      }) as VorbisFrame[];
     }
 
     return oggPage;
   }
 
-  _getSamples(segment, header) {
+  _getSamples(segment: Uint8Array, header: VorbisHeader) {
     const byte = segment[0] >> 1;
 
     const blockFlag = this._mode[byte & this._mode.mask];
@@ -143,18 +153,19 @@ export default class VorbisParser extends Parser<VorbisFrame> {
     const failedToParseVorbisStream = "Failed to read Vorbis stream";
     const failedToParseVorbisModes = ", failed to parse vorbis modes";
 
-    let mode = {
-      count: 0,
+    let mode: any = {
+      count: 0
     };
 
     // sync with the framing bit
     while ((bitReader.read(1) & 0x01) !== 1) {}
 
-    let modeBits;
+    let modeBits: number = 0;
     // search in reverse to parse out the mode entries
     // limit mode count to 63 so previous block flag will be in first packet byte
     while (mode.count < 64 && bitReader.position > 0) {
       const mapping = reverse(bitReader.read(8));
+
       if (
         mapping in mode &&
         !(mode.count === 1 && mapping === 0) // allows for the possibility of only one mode
