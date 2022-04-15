@@ -20,8 +20,8 @@ import { CodecParser } from "../../CodecParser";
 import OggPage from "../../containers/ogg/OggPage";
 import { frameStore, headerStore } from "../../globals";
 import { OnCodec } from "../../types";
-import HeaderCache from "../HeaderCache";
-import Parser from "../Parser";
+import { HeaderCache } from "../HeaderCache";
+import { Parser } from "../Parser";
 import FLACFrame, { checkFrameFooterCrc16 } from "./FLACFrame";
 import FLACHeader, { getHeader, getHeaderFromUint8Array } from "./FLACHeader";
 
@@ -29,7 +29,7 @@ const MIN_FLAC_FRAME_SIZE = 2;
 const MAX_FLAC_FRAME_SIZE = 512 * 1024;
 
 export default class FLACParser extends Parser<FLACFrame> {
-  _streamInfo!: Uint8Array;
+  private streamInfo!: Uint8Array;
 
   constructor(codecParser: CodecParser, headerCache: HeaderCache, _onCodec: OnCodec) {
     super(codecParser, headerCache);
@@ -126,7 +126,7 @@ export default class FLACParser extends Parser<FLACFrame> {
       // Identification header
 
       this.headerCache.enable();
-      this._streamInfo = oggPage.data.subarray(13);
+      this.streamInfo = oggPage.data.subarray(13);
     } else if (oggPage.pageSequenceNumber === 1) {
       // Vorbis comments
     } else {
@@ -139,7 +139,7 @@ export default class FLACParser extends Parser<FLACFrame> {
           );
 
           if (header) {
-            return new FLACFrame(segment, header as FLACHeader, this._streamInfo);
+            return new FLACFrame(segment, header as FLACHeader, this.streamInfo);
           }
 
           this.codecParser.logWarning(

@@ -20,29 +20,29 @@ import { CodecParser } from "../../CodecParser";
 import OggPage from "../../containers/ogg/OggPage";
 import { frameStore } from "../../globals";
 import { BitReader, reverse } from "../../utilities";
-import HeaderCache from "../HeaderCache";
-import Parser from "../Parser";
+import { HeaderCache } from "../HeaderCache";
+import { Parser } from "../Parser";
 import VorbisFrame from "./VorbisFrame";
 import VorbisHeader, { getHeaderFromUint8Array } from "./VorbisHeader";
 
 export default class VorbisParser extends Parser<VorbisFrame> {
-  _identificationHeader: Uint8Array;
-  _mode: any;
-  _prevBlockSize: number;
-  _currBlockSize: number;
-  _vorbisComments!: Uint8Array;
-  _vorbisSetup!: Uint8Array;
+  private identificationHeader: Uint8Array;
+  private mode: any;
+  private prevBlockSize: number;
+  private currBlockSize: number;
+  private vorbisComments!: Uint8Array;
+  private vorbisSetup!: Uint8Array;
 
   constructor(codecParser: CodecParser, headerCache: HeaderCache) {
     super(codecParser, headerCache);
 
-    this._identificationHeader = null!;
+    this.identificationHeader = null!;
 
-    this._mode = {
+    this.mode = {
       count: 0,
     };
-    this._prevBlockSize = 0;
-    this._currBlockSize = 0;
+    this.prevBlockSize = 0;
+    this.currBlockSize = 0;
   }
 
   get codec() {
@@ -56,25 +56,25 @@ export default class VorbisParser extends Parser<VorbisFrame> {
       // Identification header
 
       this.headerCache.enable();
-      this._identificationHeader = oggPage.data;
+      this.identificationHeader = oggPage.data;
     } else if (oggPage.pageSequenceNumber === 1) {
       // gather WEBM CodecPrivate data
       if (oggPageSegments[1]) {
-        this._vorbisComments = oggPageSegments[0];
-        this._vorbisSetup = oggPageSegments[1];
+        this.vorbisComments = oggPageSegments[0];
+        this.vorbisSetup = oggPageSegments[1];
 
-        this._mode = this._parseSetupHeader(oggPageSegments[1]);
+        this.mode = this._parseSetupHeader(oggPageSegments[1]);
       }
     } else {
       oggPage.codecFrames = oggPageSegments.map((segment) => {
-        const header = getHeaderFromUint8Array( // TODO: Use function
-          this._identificationHeader,
+        const header = getHeaderFromUint8Array(
+          this.identificationHeader,
           this.headerCache
         );
 
         if (header) {
-          header.vorbisComments = this._vorbisComments;
-          header.vorbisSetup = this._vorbisSetup;
+          header.vorbisComments = this.vorbisComments;
+          header.vorbisSetup = this.vorbisSetup;
 
           return new VorbisFrame(            
             header,
@@ -96,18 +96,18 @@ export default class VorbisParser extends Parser<VorbisFrame> {
   _getSamples(segment: Uint8Array, header: VorbisHeader) {
     const byte = segment[0] >> 1;
 
-    const blockFlag = this._mode[byte & this._mode.mask];
+    const blockFlag = this.mode[byte & this.mode.mask];
 
     // is this a large window
     if (blockFlag) {
-      this._prevBlockSize =
-        byte & this._mode.prevMask ? header.blocksize1 : header.blocksize0;
+      this.prevBlockSize =
+        byte & this.mode.prevMask ? header.blocksize1 : header.blocksize0;
     }
 
-    this._currBlockSize = blockFlag ? header.blocksize1 : header.blocksize0;
+    this.currBlockSize = blockFlag ? header.blocksize1 : header.blocksize0;
 
-    const samples = (this._prevBlockSize + this._currBlockSize) >> 2;
-    this._prevBlockSize = this._currBlockSize;
+    const samples = (this.prevBlockSize + this.currBlockSize) >> 2;
+    this.prevBlockSize = this.currBlockSize;
 
     return samples;
   }

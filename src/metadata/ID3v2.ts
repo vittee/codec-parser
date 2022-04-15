@@ -16,8 +16,8 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>
 */
 
-import { CodecParser } from "../CodecParser";
-import HeaderCache from "../codecs/HeaderCache";
+import { ICodecParser } from "../CodecParser";
+import { HeaderCache } from "../codecs/HeaderCache";
 
 // https://id3.org/Developer%20Information
 
@@ -32,7 +32,7 @@ type ID3v2Header = {
   length: number;
 }
 
-export function *getID3v2Header(codecParser: CodecParser, _headerCache: HeaderCache, readOffset: number): Generator<Uint8Array, ID3v2 | null, Uint8Array> {
+export function *getID3v2Header(codecParser: ICodecParser, _headerCache: HeaderCache, readOffset: number): Generator<Uint8Array, ID3v2 | null, Uint8Array> {
   const header: any = { headerLength: 10 };
 
   let data = yield* codecParser.readRawData(3, readOffset);
@@ -85,7 +85,7 @@ export function *getID3v2Header(codecParser: CodecParser, _headerCache: HeaderCa
   return new ID3v2(header);
 }
 
-export default class ID3v2 {
+export class ID3v2 {
 
   constructor(header: ID3v2Header) {
     this.version = header.version;

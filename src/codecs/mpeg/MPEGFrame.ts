@@ -18,7 +18,7 @@
 
 import { CodecParser } from "../../CodecParser";
 import { CodecFrame, getCodecFrame } from "../CodecFrame";
-import HeaderCache from "../HeaderCache";
+import { HeaderCache } from "../HeaderCache";
 import MPEGHeader, { getHeader } from "./MPEGHeader";
 
 export function *getFrame(codecParser: CodecParser, headerCache: HeaderCache, readOffset: number) {

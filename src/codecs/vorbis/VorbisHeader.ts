@@ -38,8 +38,8 @@ K      1    Framing flag
 import { vorbisOpusChannelMapping } from "../../constants";
 import { bytesToString } from "../../utilities";
 
-import CodecHeader, { RawCodecHeader } from "../CodecHeader";
-import HeaderCache from "../HeaderCache";
+import { CodecHeader, RawCodecHeader } from "../CodecHeader";
+import { HeaderCache } from "../HeaderCache";
 
 const blockSizes: Record<number, number> = {
   // 0b0110: 64,

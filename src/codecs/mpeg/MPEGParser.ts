@@ -18,8 +18,8 @@
 
 import { CodecParser } from "../../CodecParser";
 import { OnCodec } from "../../types";
-import HeaderCache from "../HeaderCache";
-import Parser from "../Parser";
+import { HeaderCache } from "../HeaderCache";
+import { Parser } from "../Parser";
 import MPEGFrame, { getFrame } from "./MPEGFrame";
 import { getHeader } from "./MPEGHeader";
 

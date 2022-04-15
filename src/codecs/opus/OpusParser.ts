@@ -19,18 +19,18 @@
 import { CodecParser } from "../../CodecParser";
 import OggPage from "../../containers/ogg/OggPage";
 import { frameStore } from "../../globals";
-import HeaderCache from "../HeaderCache";
-import Parser from "../Parser";
+import { HeaderCache } from "../HeaderCache";
+import { Parser } from "../Parser";
 import OpusFrame from "./OpusFrame";
 import { getHeaderFromUint8Array } from "./OpusHeader";
 
 export default class OpusParser extends Parser<OpusFrame> {
-  _identificationHeader: Uint8Array;
+  private identificationHeader: Uint8Array;
 
   constructor(codecParser: CodecParser, headerCache: HeaderCache) {
     super(codecParser, headerCache);
 
-    this._identificationHeader = null!;
+    this.identificationHeader = null!;
   }
 
   get codec() {
@@ -45,13 +45,13 @@ export default class OpusParser extends Parser<OpusFrame> {
       // Identification header
 
       this.headerCache.enable();
-      this._identificationHeader = oggPage.data;
+      this.identificationHeader = oggPage.data;
     } else if (oggPage.pageSequenceNumber === 1) {
       // OpusTags
     } else {
       oggPage.codecFrames = (frameStore.get(oggPage).segments as Uint8Array[]).map((segment) => {
         const header = getHeaderFromUint8Array(
-          this._identificationHeader,
+          this.identificationHeader,
           segment,
           this.headerCache
         );

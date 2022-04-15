@@ -37,9 +37,9 @@ import {
 import { bytesToString } from "../../utilities";
 
 import { getID3v2Header } from "../../metadata/ID3v2";
-import CodecHeader, { RawCodecHeader } from "../CodecHeader";
-import { CodecParser } from "../../CodecParser";
-import HeaderCache from "../HeaderCache";
+import { CodecHeader, RawCodecHeader } from "../CodecHeader";
+import { ICodecParser } from "../../CodecParser";
+import { HeaderCache } from "../HeaderCache";
 
 // http://www.mp3-tech.org/programmer/frame_header.html
 
@@ -243,7 +243,7 @@ type RawMPEGHeader = RawCodecHeader & {
   emphasis: string;
 }
 
-export function *getHeader(codecParser: CodecParser, headerCache: HeaderCache, readOffset: number): Generator<Uint8Array, MPEGHeader | null, Uint8Array> {
+export function *getHeader(codecParser: ICodecParser, headerCache: HeaderCache, readOffset: number): Generator<Uint8Array, MPEGHeader | null, Uint8Array> {
   const header = {} as RawMPEGHeader;
 
   // check for id3 header

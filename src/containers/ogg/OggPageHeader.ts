@@ -49,9 +49,9 @@ L   n   Segment table (n=page_segments+26).
         
 */
 
-import { CodecParser } from "../../CodecParser";
-import CodecHeader, { RawCodecHeader } from "../../codecs/CodecHeader";
-import HeaderCache from "../../codecs/HeaderCache";
+import { ICodecParser } from "../../CodecParser";
+import { CodecHeader, RawCodecHeader } from "../../codecs/CodecHeader";
+import { HeaderCache } from "../../codecs/HeaderCache";
 import { headerStore } from "../../globals";
 
 export type RawOggPageHeader = RawCodecHeader & {
@@ -69,7 +69,7 @@ export type RawOggPageHeader = RawCodecHeader & {
   pageSegmentBytes: Uint8Array;
 }
 
-export function *getHeader(codecParser: CodecParser, _headerCache: HeaderCache, readOffset: number) {
+export function *getHeader(codecParser: ICodecParser, _headerCache: HeaderCache, readOffset: number) {
   const header = {} as RawOggPageHeader;
 
   // Must be at least 28 bytes.

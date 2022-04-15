@@ -20,13 +20,12 @@ import { CodecParser } from "../CodecParser";
 import Frame from "../containers/Frame";
 import { frameStore } from "../globals";
 import { FrameHeaderOf, GetFrame, GetHeader } from "../types";
-import HeaderCache from "./HeaderCache";
+import { HeaderCache } from "./HeaderCache";
 
 /**
- * @abstract
- * @description Abstract class containing methods for parsing codec frames
+ * Abstract class containing methods for parsing codec frames
  */
-export default class Parser<F extends Frame<any>, H = FrameHeaderOf<F>> {  
+export class Parser<F extends Frame<any>, H = FrameHeaderOf<F>> {  
 
   constructor(
     protected codecParser: CodecParser, 

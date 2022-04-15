@@ -17,12 +17,12 @@
 */
 
 import { crc32, concatBuffers } from "./utilities";
-import HeaderCache from "./codecs/HeaderCache";
+import { HeaderCache } from "./codecs/HeaderCache";
 import MPEGParser from "./codecs/mpeg/MPEGParser";
 import AACParser from "./codecs/aac/AACParser";
 import FLACParser from "./codecs/flac/FLACParser";
 import OggParser from "./containers/ogg/OggParser";
-import Parser from "./codecs/Parser";
+import { Parser } from "./codecs/Parser";
 import { OnCodec, OnCodecUpdate } from "./types";
 import OggPage from "./containers/ogg/OggPage";
 import { CodecFrame } from "./codecs/CodecFrame";
@@ -38,7 +38,12 @@ export type CodecParserOptions = {
   enableLogging?: boolean;
 }
 
-export class CodecParser {
+export interface ICodecParser {  
+  readRawData(arg0: number, readOffset: number): Generator<Uint8Array, Uint8Array, Uint8Array>;
+  incrementRawData(length: number): void;
+}
+
+export class CodecParser implements ICodecParser {
   private flushing = false;
 
   private generator: ReturnType<typeof this.makeGenterator>;
@@ -175,7 +180,7 @@ export class CodecParser {
   }
 
   /**
-   * @param {number} increment Bytes to increment codec data
+   * @param increment Bytes to increment codec data
    */
   incrementRawData(increment: number) {
     this.currentReadPosition += increment;

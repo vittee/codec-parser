@@ -67,9 +67,9 @@ import {
   lfe,
 } from "../../constants";
 
-import CodecHeader, { RawCodecHeader } from "../CodecHeader";
-import { CodecParser } from "../../CodecParser";
-import HeaderCache from "../HeaderCache";
+import { CodecHeader, RawCodecHeader } from "../CodecHeader";
+import { ICodecParser } from "../../CodecParser";
+import { HeaderCache } from "../HeaderCache";
 
 const mpegVersion: Record<number, string> = {
   0b00000000: "MPEG-4",
@@ -155,7 +155,7 @@ type RawAACHeader = RawCodecHeader & {
   bufferFullness: any;
 }
 
-export function *getHeader(codecParser: CodecParser, headerCache: HeaderCache, readOffset: number): Generator<Uint8Array, AACHeader | null, Uint8Array> {
+export function *getHeader(codecParser: ICodecParser, headerCache: HeaderCache, readOffset: number): Generator<Uint8Array, AACHeader | null, Uint8Array> {
   const header = {} as RawAACHeader;
 
   // Must be at least seven bytes. Out of data

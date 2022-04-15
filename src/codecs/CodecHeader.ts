@@ -31,7 +31,7 @@ export type RawCodecHeader = {
   sampleRate: number;
 }
 
-export default class CodecHeader extends Header {
+export class CodecHeader extends Header {
   constructor(header: RawCodecHeader) {
     super();
 
@@ -50,7 +50,7 @@ export default class CodecHeader extends Header {
 
   channels: number;
 
-  channelMode: string; // TODO:
+  channelMode: string;
 
   sampleRate: number;
 }

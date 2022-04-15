@@ -47,7 +47,7 @@ L   8   CRC-8 (polynomial = x^8 + x^2 + x^1 + x^0, initialized with 0) of everyt
         
 */
 
-import { CodecParser } from "../../CodecParser";
+import { ICodecParser } from "../../CodecParser";
 import {
   reserved,
   bad,
@@ -69,8 +69,8 @@ import {
   lfe,
 } from "../../constants";
 import { bytesToString, crc8 } from "../../utilities";
-import CodecHeader, { RawCodecHeader } from "../CodecHeader";
-import HeaderCache from "../HeaderCache";
+import { CodecHeader, RawCodecHeader } from "../CodecHeader";
+import { HeaderCache } from "../HeaderCache";
 
 const getFromStreamInfo = "get from STREAMINFO metadata block";
 
@@ -172,7 +172,7 @@ export type RawFLACHeader = RawCodecHeader & {
   crc: number;
 }
 
-export function *getHeader(codecParser: CodecParser, headerCache: HeaderCache, readOffset: number) {
+export function *getHeader(codecParser: ICodecParser, headerCache: HeaderCache, readOffset: number) {
   // Must be at least 6 bytes.
   let data = yield* codecParser.readRawData(6, readOffset);
 
@@ -373,13 +373,17 @@ function decodeUTF8Int(data: Uint8Array) {
 }
 
 export function getHeaderFromUint8Array(data: Uint8Array, headerCache: HeaderCache) {
-  const codecParserStub = {
-    readRawData: function* () {
+  const codecParserStub: ICodecParser = {
+    *readRawData() {
       return data;
     },
+
+    incrementRawData() {
+
+    }
   };
 
-  return getHeader(codecParserStub as CodecParser /* TODO: Interface */, headerCache, 0).next().value;
+  return getHeader(codecParserStub, headerCache, 0).next().value;
 }
 
 export default class FLACHeader extends CodecHeader {

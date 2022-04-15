@@ -18,9 +18,9 @@
 
 import { frameStore, headerStore } from "../globals";
 import Frame, { Header } from "../containers/Frame";
-import CodecHeader from "./CodecHeader";
+import { CodecHeader } from "./CodecHeader";
 import { CodecParser } from "../CodecParser";
-import HeaderCache from "./HeaderCache";
+import { HeaderCache } from "./HeaderCache";
 import { GetHeader } from "../types";
 
 export type FrameFactory<F extends Frame<any>, H extends Header> = new (header: H, data: Uint8Array, samples: number) => F;

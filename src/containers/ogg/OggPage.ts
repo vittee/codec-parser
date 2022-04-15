@@ -18,7 +18,7 @@
 
 import { CodecParser } from "../../CodecParser";
 import { CodecFrame } from "../../codecs/CodecFrame";
-import HeaderCache from "../../codecs/HeaderCache";
+import { HeaderCache } from "../../codecs/HeaderCache";
 import { headerStore, frameStore } from "../../globals";
 import Frame from "../Frame";
 import OggPageHeader, { getHeader } from "./OggPageHeader";

@@ -54,8 +54,8 @@ J  8*C Channel Mapping
 import { rate48000, vorbisOpusChannelMapping } from "../../constants";
 import { bytesToString } from "../../utilities";
 
-import CodecHeader, { RawCodecHeader } from "../CodecHeader";
-import HeaderCache from "../HeaderCache";
+import { CodecHeader, RawCodecHeader } from "../CodecHeader";
+import { HeaderCache } from "../HeaderCache";
 
 /* prettier-ignore */
 const channelMappingFamilies: Record<number, string[]> = {

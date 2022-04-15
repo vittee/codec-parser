@@ -19,7 +19,7 @@
 import { OnCodecUpdate } from "../types";
 import { RawCodecHeader } from "./CodecHeader";
 
-export default class HeaderCache {
+export class HeaderCache {
   private isEnabled = false;
   private headerCache!: Map<any, any>;
   private codecUpdateData!: WeakMap<object, any>;
