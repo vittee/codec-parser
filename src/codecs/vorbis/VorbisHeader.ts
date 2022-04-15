@@ -134,7 +134,7 @@ export function getHeaderFromUint8Array(data: Uint8Array, headerCache: HeaderCac
   return new VorbisHeader(header);
 }
 
-export default class VorbisHeader extends CodecHeader {
+export class VorbisHeader extends CodecHeader {
   bitrateMaximum: number;
   bitrateMinimum: number;
   bitrateNominal: number;

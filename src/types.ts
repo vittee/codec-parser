@@ -1,7 +1,7 @@
 import type { CodecParser } from "./CodecParser";
 import type { CodecHeader } from "./codecs/CodecHeader";
 import type { HeaderCache } from "./codecs/HeaderCache";
-import type Frame from "./containers/Frame";
+import type { Frame } from "./containers/Frame";
 import type { Header } from "./containers/Frame";
 
 export type OnCodec = (codec: string) => any;

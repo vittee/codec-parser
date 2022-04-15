@@ -17,14 +17,14 @@
 */
 
 import { CodecParser } from "../../CodecParser";
-import OggPage from "../../containers/ogg/OggPage";
+import { OggPage } from "../../containers/ogg/OggPage";
 import { frameStore } from "../../globals";
 import { HeaderCache } from "../HeaderCache";
 import { Parser } from "../Parser";
-import OpusFrame from "./OpusFrame";
+import { OpusFrame } from "./OpusFrame";
 import { getHeaderFromUint8Array } from "./OpusHeader";
 
-export default class OpusParser extends Parser<OpusFrame> {
+export class OpusParser extends Parser<OpusFrame> {
   private identificationHeader: Uint8Array;
 
   constructor(codecParser: CodecParser, headerCache: HeaderCache) {

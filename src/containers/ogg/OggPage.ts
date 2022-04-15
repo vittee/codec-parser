@@ -20,8 +20,8 @@ import { CodecParser } from "../../CodecParser";
 import { CodecFrame } from "../../codecs/CodecFrame";
 import { HeaderCache } from "../../codecs/HeaderCache";
 import { headerStore, frameStore } from "../../globals";
-import Frame from "../Frame";
-import OggPageHeader, { getHeader } from "./OggPageHeader";
+import { Frame } from "../Frame";
+import { OggPageHeader, getHeader } from "./OggPageHeader";
 
 export function *getFrame(codecParser: CodecParser, headerCache: HeaderCache, readOffset: number) {
   const header = yield* getHeader(
@@ -48,7 +48,7 @@ export function *getFrame(codecParser: CodecParser, headerCache: HeaderCache, re
   }
 }
 
-export default class OggPage extends Frame<OggPageHeader> {
+export class OggPage extends Frame<OggPageHeader> {
   codecFrames: CodecFrame<any>[];
   rawData: Uint8Array;
   absoluteGranulePosition: bigint;

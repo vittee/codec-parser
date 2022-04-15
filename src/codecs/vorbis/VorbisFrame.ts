@@ -17,8 +17,8 @@
 */
 
 import { CodecFrame } from "../CodecFrame";
-import VorbisHeader from "./VorbisHeader";
+import { VorbisHeader } from "./VorbisHeader";
 
-export default class VorbisFrame extends CodecFrame<VorbisHeader> {
+export class VorbisFrame extends CodecFrame<VorbisHeader> {
 
 }

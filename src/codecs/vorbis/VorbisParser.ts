@@ -17,15 +17,15 @@
 */
 
 import { CodecParser } from "../../CodecParser";
-import OggPage from "../../containers/ogg/OggPage";
+import { OggPage } from "../../containers/ogg/OggPage";
 import { frameStore } from "../../globals";
 import { BitReader, reverse } from "../../utilities";
 import { HeaderCache } from "../HeaderCache";
 import { Parser } from "../Parser";
-import VorbisFrame from "./VorbisFrame";
-import VorbisHeader, { getHeaderFromUint8Array } from "./VorbisHeader";
+import { VorbisFrame } from "./VorbisFrame";
+import { VorbisHeader, getHeaderFromUint8Array } from "./VorbisHeader";
 
-export default class VorbisParser extends Parser<VorbisFrame> {
+export class VorbisParser extends Parser<VorbisFrame> {
   private identificationHeader: Uint8Array;
   private mode: any;
   private prevBlockSize: number;
@@ -63,7 +63,7 @@ export default class VorbisParser extends Parser<VorbisFrame> {
         this.vorbisComments = oggPageSegments[0];
         this.vorbisSetup = oggPageSegments[1];
 
-        this.mode = this._parseSetupHeader(oggPageSegments[1]);
+        this.mode = this.parseSetupHeader(oggPageSegments[1]);
       }
     } else {
       oggPage.codecFrames = oggPageSegments.map((segment) => {
@@ -79,7 +79,7 @@ export default class VorbisParser extends Parser<VorbisFrame> {
           return new VorbisFrame(            
             header,
             segment,
-            this._getSamples(segment, header)
+            this.getSamples(segment, header)
           );
         }
 
@@ -93,7 +93,7 @@ export default class VorbisParser extends Parser<VorbisFrame> {
     return oggPage;
   }
 
-  _getSamples(segment: Uint8Array, header: VorbisHeader) {
+  private getSamples(segment: Uint8Array, header: VorbisHeader) {
     const byte = segment[0] >> 1;
 
     const blockFlag = this.mode[byte & this.mode.mask];
@@ -148,7 +148,7 @@ export default class VorbisParser extends Parser<VorbisFrame> {
    *
    * liboggz and ffmpeg both use this method.
    */
-  _parseSetupHeader(setup: Uint8Array) {
+  private parseSetupHeader(setup: Uint8Array) {
     const bitReader = new BitReader(setup);
     const failedToParseVorbisStream = "Failed to read Vorbis stream";
     const failedToParseVorbisModes = ", failed to parse vorbis modes";

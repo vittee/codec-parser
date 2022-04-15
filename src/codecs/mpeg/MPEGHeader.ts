@@ -343,7 +343,7 @@ export function *getHeader(codecParser: ICodecParser, headerCache: HeaderCache, 
   return new MPEGHeader(header);
 }
 
-export default class MPEGHeader extends CodecHeader {
+export class MPEGHeader extends CodecHeader {
   /**
    * Call MPEGHeader.getHeader(Array<Uint8>) to get instance
    */

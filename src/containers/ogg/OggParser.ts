@@ -20,17 +20,17 @@ import { headerStore, frameStore } from "../../globals";
 import { bytesToString, concatBuffers } from "../../utilities";
 
 import { Parser } from "../../codecs/Parser";
-import OggPage, { getFrame } from "./OggPage";
+import { OggPage, getFrame } from "./OggPage";
 
-import FLACParser from "../../codecs/flac/FLACParser";
-import OpusParser from "../../codecs/opus/OpusParser";
-import VorbisParser from "../../codecs/vorbis/VorbisParser";
+import { FLACParser } from "../../codecs/flac/FLACParser";
+import { OpusParser } from "../../codecs/opus/OpusParser";
+import { VorbisParser } from "../../codecs/vorbis/VorbisParser";
 import { CodecParser } from "../../CodecParser";
 import { HeaderCache } from "../../codecs/HeaderCache";
 import { OnCodec } from "../../types";
 import { RawOggPageHeader } from "./OggPageHeader";
 
-export default class OggParser extends Parser<OggPage> {
+export class OggParser extends Parser<OggPage> {
   private _codec?: string;
   private onCodec: OnCodec;
   private continuedPacket: Uint8Array;
@@ -50,7 +50,7 @@ export default class OggParser extends Parser<OggPage> {
     return this._codec || "";
   }
 
-  _updateCodec(codec: string, ParserClass: typeof Parser) { // TODO: newable
+  private updateCodec(codec: string, ParserClass: typeof Parser) { // TODO: newable
     if (this._codec !== codec) {
       this.parser = new ParserClass(this.codecParser, this.headerCache) as any; // FIXME:
       this._codec = codec;
@@ -58,7 +58,7 @@ export default class OggParser extends Parser<OggPage> {
     }
   }
 
-  _checkForIdentifier({ data }: OggPage) {
+  private checkForIdentifier({ data }: OggPage) {
     const id = bytesToString(data.subarray(0, 8));
 
     switch (id) {
@@ -68,20 +68,20 @@ export default class OggParser extends Parser<OggPage> {
         return false; // ignore ogg skeleton packets
       case "OpusHead":
         // @ts-ignore
-        this._updateCodec("opus", OpusParser);
+        this.updateCodec("opus", OpusParser);
         return true;
       case /^\x7fFLAC/.test(id) && id:
         // @ts-ignore
-        this._updateCodec("flac", FLACParser);
+        this.updateCodec("flac", FLACParser);
         return true;
       case /^\x01vorbis/.test(id) && id:
         // @ts-ignore
-        this._updateCodec("vorbis", VorbisParser);
+        this.updateCodec("vorbis", VorbisParser);
         return true;
     }
   }
 
-  _checkPageSequenceNumber(oggPage: OggPage) {
+  private checkPageSequenceNumber(oggPage: OggPage) {
     if (oggPage.pageSequenceNumber !== this.pageSequenceNumber + 1 && this.pageSequenceNumber > 1 && oggPage.pageSequenceNumber > 1) {
       this.codecParser.logWarning(
         "Unexpected gap in Ogg Page Sequence Number.",
@@ -94,10 +94,10 @@ export default class OggParser extends Parser<OggPage> {
     this.pageSequenceNumber = oggPage.pageSequenceNumber;
   }
 
-  *parseFrame() {
+  override *parseFrame() {
     const oggPage = (yield* this.fixedLengthFrameSync(true))!;
 
-    this._checkPageSequenceNumber(oggPage);
+    this.checkPageSequenceNumber(oggPage);
 
     const oggPageStore = frameStore.get(oggPage);
     const { pageSegmentBytes, pageSegmentTable } = headerStore.get(
@@ -125,7 +125,7 @@ export default class OggParser extends Parser<OggPage> {
       this.continuedPacket = new Uint8Array();
     }
 
-    if (this._codec || this._checkForIdentifier(oggPage)) {
+    if (this._codec || this.checkForIdentifier(oggPage)) {
       const frame = this.parser.parseOggPage(oggPage);
       this.codecParser.mapFrameStats(frame);
       return frame;

@@ -18,15 +18,15 @@
 
 import { crc32, concatBuffers } from "./utilities";
 import { HeaderCache } from "./codecs/HeaderCache";
-import MPEGParser from "./codecs/mpeg/MPEGParser";
-import AACParser from "./codecs/aac/AACParser";
-import FLACParser from "./codecs/flac/FLACParser";
-import OggParser from "./containers/ogg/OggParser";
+import { MPEGParser } from "./codecs/mpeg/MPEGParser";
+import { AACParser } from "./codecs/aac/AACParser";
+import { FLACParser } from "./codecs/flac/FLACParser";
+import { OggParser } from "./containers/ogg/OggParser";
 import { Parser } from "./codecs/Parser";
 import { OnCodec, OnCodecUpdate } from "./types";
-import OggPage from "./containers/ogg/OggPage";
+import { OggPage } from "./containers/ogg/OggPage";
 import { CodecFrame } from "./codecs/CodecFrame";
-import Frame, { Header } from "./containers/Frame";
+import { Header, Frame } from "./containers/Frame";
 
 const noOp = () => {};
 
@@ -64,7 +64,7 @@ export class CodecParser implements ICodecParser {
   private headerCache!: HeaderCache;
 
 
-  constructor(private _inputMimeType: SupportedMimeTypes, options: CodecParserOptions = {}) {
+  constructor(private inputMimeType: SupportedMimeTypes, options: CodecParserOptions = {}) {
     this.onCodec = options.onCodec || noOp;
     this.onCodecUpdate = options.onCodecUpdate;
     this.enableLogging = options.enableLogging;
@@ -128,16 +128,16 @@ export class CodecParser implements ICodecParser {
   private *makeGenterator(): Generator<Frame<any> | Uint8Array | undefined> {
     this.headerCache = new HeaderCache(this.onCodecUpdate);
 
-    if (this._inputMimeType.match(/aac/)) {
+    if (this.inputMimeType.match(/aac/)) {
       this.parser = new AACParser(this, this.headerCache, this.onCodec);
-    } else if (this._inputMimeType.match(/mpeg/)) {
+    } else if (this.inputMimeType.match(/mpeg/)) {
       this.parser = new MPEGParser(this, this.headerCache, this.onCodec);
-    } else if (this._inputMimeType.match(/flac/)) {
+    } else if (this.inputMimeType.match(/flac/)) {
       this.parser = new FLACParser(this, this.headerCache, this.onCodec);
-    } else if (this._inputMimeType.match(/ogg/)) {
+    } else if (this.inputMimeType.match(/ogg/)) {
       this.parser = new OggParser(this, this.headerCache, this.onCodec);
     } else {
-      throw new Error(`Unsupported Codec ${this._inputMimeType}`);
+      throw new Error(`Unsupported Codec ${this.inputMimeType}`);
     }
 
     this.frameNumber = 0;
@@ -228,7 +228,7 @@ export class CodecParser implements ICodecParser {
     if (this.enableLogging) {
       const stats = [
         `codec:         ${this.codec}`,
-        `inputMimeType: ${this._inputMimeType}`,
+        `inputMimeType: ${this.inputMimeType}`,
         `readPosition:  ${this.currentReadPosition}`,
         `totalBytesIn:  ${this.totalBytesIn}`,
         `totalBytesOut: ${this.totalBytesOut}`,

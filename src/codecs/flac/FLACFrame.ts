@@ -19,7 +19,7 @@
 import { headerStore } from "../../globals.js";
 import { flacCrc16 } from "../../utilities.js";
 import { CodecFrame } from "../CodecFrame.js";
-import FLACHeader from "./FLACHeader.js";
+import { FLACHeader } from "./FLACHeader.js";
 
 function getFrameFooterCrc16(data: Uint8Array) {
   return (data[data.length - 2] << 8) + data[data.length - 1];
@@ -35,7 +35,7 @@ export function checkFrameFooterCrc16(data: Uint8Array) {
 }
 
 
-export default class FLACFrame extends CodecFrame<FLACHeader> {
+export class FLACFrame extends CodecFrame<FLACHeader> {
   constructor(data: Uint8Array, header: FLACHeader, streamInfo: Uint8Array) {
     header.streamInfo = streamInfo;
     header.crc16 = getFrameFooterCrc16(data);

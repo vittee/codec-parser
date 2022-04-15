@@ -17,9 +17,9 @@
 */
 
 import { CodecFrame } from "../CodecFrame";
-import OpusHeader from "./OpusHeader";
+import { OpusHeader } from "./OpusHeader";
 
-export default class OpusFrame extends CodecFrame<OpusHeader> {
+export class OpusFrame extends CodecFrame<OpusHeader> {
   constructor(data: Uint8Array, header: OpusHeader) {
     super(
       header,

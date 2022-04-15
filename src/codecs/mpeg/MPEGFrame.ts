@@ -19,7 +19,7 @@
 import { CodecParser } from "../../CodecParser";
 import { CodecFrame, getCodecFrame } from "../CodecFrame";
 import { HeaderCache } from "../HeaderCache";
-import MPEGHeader, { getHeader } from "./MPEGHeader";
+import { MPEGHeader, getHeader } from "./MPEGHeader";
 
 export function *getFrame(codecParser: CodecParser, headerCache: HeaderCache, readOffset: number) {
   return yield* getCodecFrame(
@@ -31,6 +31,6 @@ export function *getFrame(codecParser: CodecParser, headerCache: HeaderCache, re
   );
 }
 
-export default class MPEGFrame extends CodecFrame<MPEGHeader> {
+export class MPEGFrame extends CodecFrame<MPEGHeader> {
 
 }

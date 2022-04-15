@@ -17,18 +17,18 @@
 */
 
 import { CodecParser } from "../../CodecParser";
-import OggPage from "../../containers/ogg/OggPage";
+import { OggPage } from "../../containers/ogg/OggPage";
 import { frameStore, headerStore } from "../../globals";
 import { OnCodec } from "../../types";
 import { HeaderCache } from "../HeaderCache";
 import { Parser } from "../Parser";
-import FLACFrame, { checkFrameFooterCrc16 } from "./FLACFrame";
-import FLACHeader, { getHeader, getHeaderFromUint8Array } from "./FLACHeader";
+import { FLACFrame, checkFrameFooterCrc16 } from "./FLACFrame";
+import { FLACHeader, getHeader, getHeaderFromUint8Array } from "./FLACHeader";
 
 const MIN_FLAC_FRAME_SIZE = 2;
 const MAX_FLAC_FRAME_SIZE = 512 * 1024;
 
-export default class FLACParser extends Parser<FLACFrame> {
+export class FLACParser extends Parser<FLACFrame> {
   private streamInfo!: Uint8Array;
 
   constructor(codecParser: CodecParser, headerCache: HeaderCache, _onCodec: OnCodec) {
@@ -58,7 +58,7 @@ export default class FLACParser extends Parser<FLACFrame> {
     return offset;
   }
 
-  *parseFrame() {
+  override *parseFrame() {
     // find the first valid frame header
     do {
       const header = yield* getHeader(

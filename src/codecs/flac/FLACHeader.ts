@@ -386,7 +386,7 @@ export function getHeaderFromUint8Array(data: Uint8Array, headerCache: HeaderCac
   return getHeader(codecParserStub, headerCache, 0).next().value;
 }
 
-export default class FLACHeader extends CodecHeader {
+export class FLACHeader extends CodecHeader {
   streamInfo: Uint8Array;
   crc16: number;
   

@@ -22,7 +22,7 @@ export class Header {
 
 }
 
-export default class Frame<H extends Header> {
+export class Frame<H extends Header> {
   constructor(header: H, readonly data: Uint8Array, _samples: number) {
     frameStore.set(this, { header });
   }

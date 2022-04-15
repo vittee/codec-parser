@@ -20,10 +20,10 @@ import { CodecParser } from "../../CodecParser";
 import { OnCodec } from "../../types";
 import { HeaderCache } from "../HeaderCache";
 import { Parser } from "../Parser";
-import MPEGFrame, { getFrame } from "./MPEGFrame";
+import { MPEGFrame, getFrame } from "./MPEGFrame";
 import { getHeader } from "./MPEGHeader";
 
-export default class MPEGParser extends Parser<MPEGFrame> {
+export class MPEGParser extends Parser<MPEGFrame> {
   constructor(codecParser: CodecParser, headerCache: HeaderCache, onCodec: OnCodec) {
     super(codecParser, headerCache, getFrame, getHeader);
 
@@ -34,7 +34,7 @@ export default class MPEGParser extends Parser<MPEGFrame> {
     return "mpeg";
   }
 
-  *parseFrame() {
+  override *parseFrame() {
     return yield* this.fixedLengthFrameSync();
   }
 }

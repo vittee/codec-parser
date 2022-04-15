@@ -269,7 +269,7 @@ export function getHeaderFromUint8Array(data: Uint8Array, packetData: Uint8Array
   return new OpusHeader(header);
 }
 
-export default class OpusHeader extends CodecHeader {
+export class OpusHeader extends CodecHeader {
   data: Uint8Array;
   bandwidth: number;
   channelMappingFamily: number;

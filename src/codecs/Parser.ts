@@ -17,7 +17,7 @@
 */
 
 import { CodecParser } from "../CodecParser";
-import Frame from "../containers/Frame";
+import { Frame } from "../containers/Frame";
 import { frameStore } from "../globals";
 import { FrameHeaderOf, GetFrame, GetHeader } from "../types";
 import { HeaderCache } from "./HeaderCache";

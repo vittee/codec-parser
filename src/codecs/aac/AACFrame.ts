@@ -19,7 +19,7 @@
 import { CodecParser } from "../../CodecParser";
 import { CodecFrame, getCodecFrame } from "../CodecFrame";
 import { HeaderCache } from "../HeaderCache";
-import AACHeader, { getHeader } from "./AACHeader";
+import { AACHeader, getHeader } from "./AACHeader";
 
 export function *getFrame(codecParser: CodecParser, headerCache: HeaderCache, readOffset: number) {
   return yield* getCodecFrame(
@@ -31,6 +31,6 @@ export function *getFrame(codecParser: CodecParser, headerCache: HeaderCache, re
   );
 }
 
-export default class AACFrame extends CodecFrame<AACHeader> {
+export class AACFrame extends CodecFrame<AACHeader> {
 
 }

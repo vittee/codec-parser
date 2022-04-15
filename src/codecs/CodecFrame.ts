@@ -17,7 +17,7 @@
 */
 
 import { frameStore, headerStore } from "../globals";
-import Frame, { Header } from "../containers/Frame";
+import { Header, Frame } from "../containers/Frame";
 import { CodecHeader } from "./CodecHeader";
 import { CodecParser } from "../CodecParser";
 import { HeaderCache } from "./HeaderCache";

@@ -256,7 +256,7 @@ export function *getHeader(codecParser: ICodecParser, headerCache: HeaderCache, 
   return new AACHeader(header);
 }
 
-export default class AACHeader extends CodecHeader {
+export class AACHeader extends CodecHeader {
   /**
    * @private
    * Call AACHeader.getHeader(Array<Uint8>) to get instance

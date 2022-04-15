@@ -20,10 +20,10 @@ import { CodecParser } from "../../CodecParser";
 import { OnCodec } from "../../types";
 import { HeaderCache } from "../HeaderCache";
 import { Parser } from "../Parser";
-import AACFrame, { getFrame } from "./AACFrame";
+import { AACFrame, getFrame } from "./AACFrame";
 import { getHeader } from "./AACHeader";
 
-export default class AACParser extends Parser<AACFrame> {
+export class AACParser extends Parser<AACFrame> {
   constructor(codecParser: CodecParser, headerCache: HeaderCache, onCodec: OnCodec) {
     super(codecParser, headerCache, getFrame, getHeader);
 
@@ -34,7 +34,7 @@ export default class AACParser extends Parser<AACFrame> {
     return "aac";
   }
 
-  *parseFrame() {
+  override *parseFrame() {
     return yield* this.fixedLengthFrameSync();
   }
 }

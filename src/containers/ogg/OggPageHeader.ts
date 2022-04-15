@@ -157,7 +157,7 @@ export function *getHeader(codecParser: ICodecParser, _headerCache: HeaderCache,
   return new OggPageHeader(header);
 }
 
-export default class OggPageHeader extends CodecHeader {
+export class OggPageHeader extends CodecHeader {
   /**
    * @private
    * Call OggPageHeader.getHeader(Array<Uint8>) to get instance
