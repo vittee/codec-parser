@@ -1,7 +1,13 @@
 export const reserved = "reserved"; // FIXME:
+
+/** @deprecated */
 export const bad = "bad";
 export const free = "free";
+
+/** @deprecated */
 export const none = "none";
+
+/** @deprecated */
 export const sixteenBitCRC = "16bit CRC";
 
 // channel mappings

@@ -45,7 +45,6 @@ import { headerStore } from "../../globals";
 import { bytesToString } from "../../utilities";
 import {
   reserved,
-  bad,
   none,
   sixteenBitCRC,
   rate96000,
@@ -71,16 +70,11 @@ import { CodecHeader, RawCodecHeader } from "../CodecHeader";
 import { ICodecParser } from "../../CodecParser";
 import { HeaderCache } from "../HeaderCache";
 
-const mpegVersion: Record<number, string> = {
-  0b00000000: "MPEG-4",
-  0b00001000: "MPEG-2",
-};
+type MpegVersion = 4 | 2;
 
-const layer: Record<number, string> = {
-  0b00000000: "valid",
-  0b00000010: bad,
-  0b00000100: bad,
-  0b00000110: bad,
+const mpegVersion: Record<number, MpegVersion> = {
+  0b00000000: 4,
+  0b00001000: 2,
 };
 
 const protection: Record<number, string> = {
@@ -136,8 +130,8 @@ const channelMode: Record<number, any> = { // TODO: define shape
 };
 
 type RawAACHeader = RawCodecHeader & {
-  mpegVersion: string;
-  layer: string;
+  mpegVersion: MpegVersion;
+  validLayer: boolean;
   protection: string;
   length: number;
   profileBits: number;
@@ -181,8 +175,8 @@ export function *getHeader(codecParser: ICodecParser, headerCache: HeaderCache, 
     // * `.......D`: protection absent, Warning, set to 1 if there is no CRC and 0 if there is CRC
     header.mpegVersion = mpegVersion[data[1] & 0b00001000];
 
-    header.layer = layer[data[1] & 0b00000110];
-    if (header.layer === bad) return null;
+    header.validLayer = (data[1] & 0b00000110) === 0;
+    if (!header.validLayer) return null;
 
     const protectionBit = data[1] & 0b00000001;
     header.protection = protection[protectionBit];
@@ -270,7 +264,7 @@ export class AACHeader extends CodecHeader {
     this.isHome = header.isHome;
     this.isOriginal = header.isOriginal;
     this.isPrivate = header.isPrivate;
-    this.layer = header.layer;
+    this.validLayer = header.validLayer;
     this.length = header.length;
     this.mpegVersion = header.mpegVersion;
     this.numberAACFrames = header.numberAACFrames;
@@ -299,8 +293,8 @@ export class AACHeader extends CodecHeader {
     return bytes;
   }
 
-  mpegVersion: string;
-  layer: string;
+  mpegVersion: MpegVersion;
+  validLayer: boolean;
   protection: string;
   length: number;
   // profileBits: number;

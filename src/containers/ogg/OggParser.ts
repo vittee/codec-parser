@@ -19,7 +19,7 @@
 import { headerStore, frameStore } from "../../globals";
 import { bytesToString, concatBuffers } from "../../utilities";
 
-import { Parser } from "../../codecs/Parser";
+import { Parser, ParserConstructor } from "../../codecs/Parser";
 import { OggPage, getFrame } from "./OggPage";
 
 import { FLACParser } from "../../codecs/flac/FLACParser";
@@ -50,9 +50,9 @@ export class OggParser extends Parser<OggPage> {
     return this._codec || "";
   }
 
-  private updateCodec(codec: string, ParserClass: typeof Parser) { // TODO: newable
+  private updateCodec(codec: string, ParserCtor: ParserConstructor) {
     if (this._codec !== codec) {
-      this.parser = new ParserClass(this.codecParser, this.headerCache) as any; // FIXME:
+      this.parser = new ParserCtor(this.codecParser, this.headerCache) as (OpusParser | FLACParser | VorbisParser);
       this._codec = codec;
       this.onCodec(codec);
     }
