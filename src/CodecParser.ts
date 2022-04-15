@@ -164,7 +164,7 @@ export class CodecParser implements ICodecParser {
    */
   *readRawData(minSize: number = 0, readOffset: number = 0): Generator<Uint8Array, Uint8Array, Uint8Array> {
     while (this.rawData.length <= minSize + readOffset) {
-      const newData = yield undefined as any; // Externally consumed
+      const newData = yield(undefined as any); // Externally consumed
 
       if (this.flushing) {
         return this.rawData.subarray(readOffset);

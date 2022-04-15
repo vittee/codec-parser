@@ -22,15 +22,6 @@ import {
   free,
   none,
   sixteenBitCRC,
-  rate44100,
-  rate48000,
-  rate32000,
-  rate22050,
-  rate24000,
-  rate16000,
-  rate11025,
-  rate12000,
-  rate8000,
   monophonic,
   stereo,
 } from "../../constants";
@@ -43,42 +34,25 @@ import { HeaderCache } from "../HeaderCache";
 
 // http://www.mp3-tech.org/programmer/frame_header.html
 
-const bitrateMatrix: Record<number, any> = { // TODO: define shape
+const bitrateMatrix: [any, any, any, any, any][] = [
   // bits | V1,L1 | V1,L2 | V1,L3 | V2,L1 | V2,L2 & L3
-  0b00000000: [free, free, free, free, free],
-  0b00010000: [32, 32, 32, 32, 8],
-  // 0b00100000: [64,   48,  40,  48,  16,],
-  // 0b00110000: [96,   56,  48,  56,  24,],
-  // 0b01000000: [128,  64,  56,  64,  32,],
-  // 0b01010000: [160,  80,  64,  80,  40,],
-  // 0b01100000: [192,  96,  80,  96,  48,],
-  // 0b01110000: [224, 112,  96, 112,  56,],
-  // 0b10000000: [256, 128, 112, 128,  64,],
-  // 0b10010000: [288, 160, 128, 144,  80,],
-  // 0b10100000: [320, 192, 160, 160,  96,],
-  // 0b10110000: [352, 224, 192, 176, 112,],
-  // 0b11000000: [384, 256, 224, 192, 128,],
-  // 0b11010000: [416, 320, 256, 224, 144,],
-  // 0b11100000: [448, 384, 320, 256, 160,],
-  0b11110000: [bad, bad, bad, bad, bad],
-};
-
-const calcBitrate = (idx: number, interval: number, intervalOffset: number) =>
-  8 *
-    (((idx + intervalOffset) % interval) + interval) *
-    (1 << ((idx + intervalOffset) / interval)) -
-  8 * interval * ((interval / 8) | 0);
-
-// generate bitrate matrix
-for (let i = 2; i < 15; i++) {
-  bitrateMatrix[i << 4] = [
-    i * 32, //                V1,L1
-    calcBitrate(i, 4, 0), //  V1,L2
-    calcBitrate(i, 4, -1), // V1,L3
-    calcBitrate(i, 8, 4), //  V2,L1
-    calcBitrate(i, 8, 0), //  V2,L2 & L3
-  ];
-}
+  [free, free, free, free, free],
+  [32,   32,  32,  32,   8,],
+  [64,   48,  40,  48,  16,],
+  [96,   56,  48,  56,  24,],
+  [128,  64,  56,  64,  32,],
+  [160,  80,  64,  80,  40,],
+  [192,  96,  80,  96,  48,],
+  [224, 112,  96, 112,  56,],
+  [256, 128, 112, 128,  64,],
+  [288, 160, 128, 144,  80,],
+  [320, 192, 160, 160,  96,],
+  [352, 224, 192, 176, 112,],
+  [384, 256, 224, 192, 128,],
+  [416, 320, 256, 224, 144,],
+  [448, 384, 320, 256, 160,],
+  [bad, bad, bad, bad, bad]
+];
 
 const v1Layer1 = 0;
 const v1Layer2 = 1;
@@ -88,6 +62,7 @@ const v2Layer23 = 4;
 
 const bands = "bands ";
 const to31 = " to 31";
+
 const layer12ModeExtensions = {
   0b00000000: bands + 4 + to31,
   0b00010000: bands + 8 + to31,
@@ -111,7 +86,6 @@ type Layer = {
   description: string;
   framePadding?: number;
   modeExtensions?: Record<number, string>;
-  samples?: number;
   v1?: {
     bitrateIndex: number;
     samples?: number;
@@ -140,87 +114,61 @@ const layers: Record<number, Layer> = {
   0b00000100: {
     description: "Layer II",
     framePadding: 1,
-    modeExtensions: layer12ModeExtensions,
-    samples: 1152,
+    modeExtensions: layer12ModeExtensions,    
     v1: {
       bitrateIndex: v1Layer2,
+      samples: 1152,
     },
     v2: {
       bitrateIndex: v2Layer23,
+      samples: 1152,
     },
   },
   0b00000110: {
     description: "Layer I",
     framePadding: 4,
-    modeExtensions: layer12ModeExtensions,
-    samples: 384,
+    modeExtensions: layer12ModeExtensions,    
     v1: {
       bitrateIndex: v1Layer1,
+      samples: 384,
     },
     v2: {
       bitrateIndex: v2Layer1,
+      samples: 384,
     },
   },
 };
-
-const mpegVersion = "MPEG Version ";
-const isoIec = "ISO/IEC ";
-const v2 = "v2";
-const v1 = "v1";
 
 type Version = 'v1' | 'v2';
 
 type MpegVersion = {
   description: string;
-  layers?: Version;
-  sampleRates?: Record<number, number | 'reserved'> // FIXME:
+  layers: Version;
+  sampleRates?: [number, number, number];
 }
 
-const mpegVersions: Record<number, MpegVersion> = {
-  0b00000000: {
-    description: `${mpegVersion}2.5 (later extension of MPEG 2)`,
-    layers: v2,
-    sampleRates: {
-      0b00000000: rate11025,
-      0b00000100: rate12000,
-      0b00001000: rate8000,
-      0b00001100: reserved,
-    },
+const mpegVersions: (MpegVersion | undefined)[] = [
+  {
+    description: `MPEG Version 2.5 (later extension of MPEG 2)`,
+    layers: 'v2',
+    sampleRates: [11025, 12000, 8000]
   },
-  0b00001000: { description: reserved },
-  0b00010000: {
-    description: `${mpegVersion}2 (${isoIec}13818-3)`,
-    layers: v2,
-    sampleRates: {
-      0b00000000: rate22050,
-      0b00000100: rate24000,
-      0b00001000: rate16000,
-      0b00001100: reserved,
-    },
+  undefined,
+  {
+    description: `MPEG Version 2 (ISO/IEC 13818-3)`,
+    layers: 'v2',
+    sampleRates: [22050, 24000, 16000]
   },
-  0b00011000: {
-    description: `${mpegVersion}1 (${isoIec}11172-3)`,
-    layers: v1,
-    sampleRates: {
-      0b00000000: rate44100,
-      0b00000100: rate48000,
-      0b00001000: rate32000,
-      0b00001100: reserved,
-    },
+  {
+    description: `MPEG Version 1 (ISO/IEC 11172-3)`,
+    layers: 'v1',
+    sampleRates: [44100, 48000, 32000]
   },
-};
+];
 
-const protection: Record<number, string> = {
-  0b00000000: sixteenBitCRC,
-  0b00000001: none,
-};
+const emphasis = ["none", "50/15 ms", "reserved", "CCIT J.17"] as const;
 
-const emphasis: Record<number, string> = { 
-  0b00000000: none,
-  0b00000001: "50/15 ms",
-  0b00000010: reserved,
-  0b00000011: "CCIT J.17",
-};
+export type Emphasis = typeof emphasis[number];
 
 const channelModes: Record<number, any> = { // TODO: define shape
   0b00000000: { channels: 2, description: stereo },
@@ -240,7 +188,7 @@ type RawMPEGHeader = RawCodecHeader & {
   modeExtension: string;
   isCopyrighted: boolean;
   isOriginal: boolean;
-  emphasis: string;
+  emphasis: Emphasis;
 }
 
 export function* getHeader(codecParser: ICodecParser, headerCache: HeaderCache, readOffset: number) {
@@ -277,22 +225,24 @@ export function* getHeader(codecParser: ICodecParser, headerCache: HeaderCache, 
   // * `.......D`: Protection bit (0 - Protected by CRC (16bit CRC follows header), 1 = Not protected)
 
   // Mpeg version (1, 2, 2.5)
-  const mpegVersion = mpegVersions[data[1] & 0b00011000];
-  if (mpegVersion.description === reserved) return;
+  const mpegVersion = mpegVersions[(data[1] & 0b00011000) >> 3];
+  if (!mpegVersion) return;
 
   // Layer (I, II, III)
   const layerBits = data[1] & 0b00000110;
 
   if (layers[layerBits].description === reserved) return;
+
+  // TODO: Clear this mess
   const layer: Layer & Partial<Layer['v1']> = {
     ...layers[layerBits],
-    ...layers[layerBits][mpegVersion.layers!],
+    ...layers[layerBits][mpegVersion.layers],
   };
 
   header.mpegVersion = mpegVersion.description;
   header.layer = layer.description;
   header.samples = layer.samples ?? 0;
-  header.protection = protection[data[1] & 0b00000001];
+  header.protection = (data[1] & 0b00000001) ? none : sixteenBitCRC;
 
   header.length = 4;
 
@@ -302,11 +252,11 @@ export function* getHeader(codecParser: ICodecParser, headerCache: HeaderCache, 
   // * `....FF..`: Sample rate
   // * `......G.`: Padding bit, 0=frame not padded, 1=frame padded
   // * `.......H`: Private bit.
-  header.bitrate = bitrateMatrix[data[2] & 0b11110000][layer.bitrateIndex ?? 0];
+  header.bitrate = bitrateMatrix[(data[2] & 0b11110000) >> 4][layer.bitrateIndex ?? 0];
   if (header.bitrate as any === bad) return;
 
-  header.sampleRate = mpegVersion.sampleRates![data[2] & 0b00001100] as number;
-  if (header.sampleRate as any === reserved) return;
+  header.sampleRate = mpegVersion.sampleRates![(data[2] & 0b00001100) >> 2] as number;
+  if (!header.sampleRate) return;
 
   header.framePadding = data[2] & 0b00000010 && (layer.framePadding ?? 0);
   header.isPrivate = Boolean(data[2] & 0b00000001);
@@ -374,5 +324,5 @@ export class MPEGHeader extends CodecHeader {
   modeExtension: string;
   isCopyrighted: boolean;
   isOriginal: boolean;
-  emphasis: string;
+  emphasis: Emphasis;
 }
