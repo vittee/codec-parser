@@ -72,23 +72,13 @@ import { HeaderCache } from "../HeaderCache";
 
 export type MpegVersion = 4 | 2;
 
-const mpegVersion: Record<number, MpegVersion> = {
-  0b00000000: 4,
-  0b00001000: 2,
-};
-
-const protection: Record<number, string> = {
-  0b00000000: sixteenBitCRC,
-  0b00000001: none,
-};
-
 export type Profile = 'Main' | 'LC' | 'SSR' | 'LTP';
 
-const profile: Record<number, Profile> = {
-  0b00000000: "Main",
-  0b01000000: "LC",
-  0b10000000: "SSR",
-  0b11000000: "LTP"
+const profiles: Record<number, Profile> = {
+  0b00: "Main",
+  0b01: "LC",
+  0b10: "SSR",
+  0b11: "LTP"
 };
 
 const sampleRates: Record<number, any> = { // TODO: define shape
@@ -162,13 +152,13 @@ function makeHeader(data: Uint8Array) {
   // * `....B...`: MPEG Version: 0 for MPEG-4, 1 for MPEG-2
   // * `.....CC.`: Layer: always 0
   // * `.......D`: protection absent, Warning, set to 1 if there is no CRC and 0 if there is CRC
-  header.mpegVersion = mpegVersion[data[1] & 0b00001000];
+  header.mpegVersion = (data[1] & 0b00001000) ? 2 : 4;
 
   header.validLayer = (data[1] & 0b00000110) === 0;
   if (!header.validLayer) return null;
 
   const protectionBit = data[1] & 0b00000001;
-  header.protection = protection[protectionBit];
+  header.protection = protectionBit ? none : sixteenBitCRC;
   header.length = protectionBit ? 7 : 9;
 
   // Byte (3 of 7)
@@ -176,11 +166,11 @@ function makeHeader(data: Uint8Array) {
   // * `EE......`: profile, the MPEG-4 Audio Object Type minus 1
   // * `..FFFF..`: MPEG-4 Sampling Frequency Index (15 is forbidden)
   // * `......G.`: private bit, guaranteed never to be used by MPEG, set to 0 when encoding, ignore when decoding
-  header.profileBits = data[2] & 0b11000000;
+  header.profileBits = (data[2] & 0b11000000) >> 6;
   header.sampleRateBits = data[2] & 0b00111100;
   const privateBit = data[2] & 0b00000010;
 
-  header.profile = profile[header.profileBits];
+  header.profile = profiles[header.profileBits];
 
   header.sampleRate = sampleRates[header.sampleRateBits];
   if ((header.sampleRate as any) === reserved) return null;
