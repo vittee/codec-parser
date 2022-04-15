@@ -18,8 +18,8 @@
 
 import {
   reserved,
-  bad,
-  free,
+  // bad,
+  // free,
   none,
   sixteenBitCRC,
   monophonic,
@@ -33,32 +33,6 @@ import { ICodecParser } from "../../CodecParser";
 import { HeaderCache } from "../HeaderCache";
 
 // http://www.mp3-tech.org/programmer/frame_header.html
-
-const bitrateMatrix: [any, any, any, any, any][] = [
-  // bits | V1,L1 | V1,L2 | V1,L3 | V2,L1 | V2,L2 & L3
-  [free, free, free, free, free],
-  [32,   32,  32,  32,   8,],
-  [64,   48,  40,  48,  16,],
-  [96,   56,  48,  56,  24,],
-  [128,  64,  56,  64,  32,],
-  [160,  80,  64,  80,  40,],
-  [192,  96,  80,  96,  48,],
-  [224, 112,  96, 112,  56,],
-  [256, 128, 112, 128,  64,],
-  [288, 160, 128, 144,  80,],
-  [320, 192, 160, 160,  96,],
-  [352, 224, 192, 176, 112,],
-  [384, 256, 224, 192, 128,],
-  [416, 320, 256, 224, 144,],
-  [448, 384, 320, 256, 160,],
-  [bad, bad, bad, bad, bad]
-];
-
-const v1Layer1 = 0;
-const v1Layer2 = 1;
-const v1Layer3 = 2;
-const v2Layer1 = 3;
-const v2Layer23 = 4;
 
 const bands = "bands ";
 const to31 = " to 31";
@@ -82,86 +56,109 @@ const layer3ModeExtensions: Record<number, string> = {
   0b00110000: intensityStereo + on + msStereo + on,
 };
 
-type Layer = {
-  description: string;
-  framePadding?: number;
-  modeExtensions?: Record<number, string>;
-  v1?: {
-    bitrateIndex: number;
-    samples?: number;
-  },
-  v2?: {
-    bitrateIndex: number;
-    samples?: number;
-  }
+type L12MEB = [4 | 8 | 12 | 16, 31];
+
+type L3ME = {
+  intensityStereo: boolean;
+  msStereo: boolean;
 }
 
-const layers: Record<number, Layer> = {
-  0b00000000: { description: reserved },
-  0b00000010: {
+type Layer1Info = {
+  layer: 1;
+  description: string;
+  framePadding: 4;
+  modeExtensions: [L12MEB, L12MEB, L12MEB, L12MEB];
+}
+
+type Layer2Info = {
+  layer: 2;
+  description: string;
+  framePadding: 1;
+  modeExtensions: [L12MEB, L12MEB, L12MEB, L12MEB];
+}
+
+type Layer3Info = {
+  layer: 3;
+  description: string;
+  framePadding: 1;
+  modeExtensions: [L3ME, L3ME, L3ME, L3ME];
+}
+
+
+type LayerBitrates = [undefined, number, number, number, number, number, number, number, number, number, number, number, number, number, number, -1];
+
+type VersionSpecificLayer = {
+  bitrates: LayerBitrates;
+  samples: number;
+}
+
+const layers: [undefined, Layer3Info, Layer2Info, Layer1Info] = [
+  undefined,
+  {
+    layer: 3,
     description: "Layer III",
     framePadding: 1,
-    modeExtensions: layer3ModeExtensions,
-    v1: {
-      bitrateIndex: v1Layer3,
-      samples: 1152,
-    },
-    v2: {
-      bitrateIndex: v2Layer23,
-      samples: 576,
-    },
+    modeExtensions: layer3ModeExtensions as any, // TODO:
   },
-  0b00000100: {
+  {
+    layer: 2,
     description: "Layer II",
     framePadding: 1,
-    modeExtensions: layer12ModeExtensions,    
-    v1: {
-      bitrateIndex: v1Layer2,
-      samples: 1152,
-    },
-    v2: {
-      bitrateIndex: v2Layer23,
-      samples: 1152,
-    },
+    modeExtensions: layer12ModeExtensions as any, // TODO:    
   },
-  0b00000110: {
+  {
+    layer: 1,
     description: "Layer I",
     framePadding: 4,
-    modeExtensions: layer12ModeExtensions,    
-    v1: {
-      bitrateIndex: v1Layer1,
-      samples: 384,
-    },
-    v2: {
-      bitrateIndex: v2Layer1,
-      samples: 384,
-    },
+    modeExtensions: layer12ModeExtensions as any, // TODO:
   },
-};
+];
 
-type Version = 'v1' | 'v2';
+type VersionSpecificLayers = [undefined, VersionSpecificLayer, VersionSpecificLayer, VersionSpecificLayer];
 
 type MpegVersion = {
   description: string;
-  layers: Version;
-  sampleRates?: [number, number, number];
+  layers: VersionSpecificLayers;
+  sampleRates: [number, number, number];
 }
 
-const mpegVersions: (MpegVersion | undefined)[] = [
+const version2Layer2And3Bitrates: LayerBitrates = [undefined, 8,  16, 24, 32, 40, 48,  56,  64,  80,  96, 112, 128, 144, 160, -1];
+
+const version2LayerInfos: VersionSpecificLayers = [
+  undefined,
+  // Layer III
+  { samples: 576, bitrates: version2Layer2And3Bitrates }, 
+  // Layer II
+  { samples: 1152, bitrates: version2Layer2And3Bitrates },
+  // Layer I
+  { samples:  384, bitrates: [undefined, 32, 48, 56, 64, 80, 96, 112, 128, 144, 160, 176, 192, 224, 256 ,-1] }    
+];
+
+const version1LayerInfos: VersionSpecificLayers = [
+  undefined,
+  // Layer III
+  { samples: 1152, bitrates: [undefined, 32, 40, 48, 56, 64, 80, 96, 112, 128, 160, 192, 224, 256, 320, -1] },
+  // Layer II
+  { samples: 1152, bitrates: [undefined, 32, 48, 56, 64, 80, 96, 112, 128, 160, 192, 224, 256, 320, 384, -1] },
+  // Layer I
+  { samples:  384, bitrates: [undefined, 32, 64, 96, 128, 160, 192, 224, 256, 288, 320, 352, 384, 416, 448, -1]}
+];
+
+const mpegVersions: [MpegVersion, undefined, MpegVersion, MpegVersion] = [
   {
     description: `MPEG Version 2.5 (later extension of MPEG 2)`,
-    layers: 'v2',
+    layers: version2LayerInfos,
     sampleRates: [11025, 12000, 8000]
   },
   undefined,
   {
     description: `MPEG Version 2 (ISO/IEC 13818-3)`,
-    layers: 'v2',
+    layers: version2LayerInfos,
     sampleRates: [22050, 24000, 16000]
   },
   {
     description: `MPEG Version 1 (ISO/IEC 11172-3)`,
-    layers: 'v1',
+    layers: version1LayerInfos,
     sampleRates: [44100, 48000, 32000]
   },
 ];
@@ -229,19 +226,16 @@ export function* getHeader(codecParser: ICodecParser, headerCache: HeaderCache, 
   if (!mpegVersion) return;
 
   // Layer (I, II, III)
-  const layerBits = data[1] & 0b00000110;
+  const layerBits = (data[1] & 0b00000110) >> 1;
 
-  if (layers[layerBits].description === reserved) return;
-
-  // TODO: Clear this mess
-  const layer: Layer & Partial<Layer['v1']> = {
-    ...layers[layerBits],
-    ...layers[layerBits][mpegVersion.layers],
-  };
+  const layer = layers[layerBits];
+  if (!layer) return;
+  
 
   header.mpegVersion = mpegVersion.description;
   header.layer = layer.description;
-  header.samples = layer.samples ?? 0;
+
+  header.samples = mpegVersion.layers[layerBits]?.samples || 0;
   header.protection = (data[1] & 0b00000001) ? none : sixteenBitCRC;
 
   header.length = 4;
@@ -252,8 +246,8 @@ export function* getHeader(codecParser: ICodecParser, headerCache: HeaderCache, 
   // * `....FF..`: Sample rate
   // * `......G.`: Padding bit, 0=frame not padded, 1=frame padded
   // * `.......H`: Private bit.
-  header.bitrate = bitrateMatrix[(data[2] & 0b11110000) >> 4][layer.bitrateIndex ?? 0];
-  if (header.bitrate as any === bad) return;
+  header.bitrate = mpegVersion.layers[layerBits]?.bitrates[(data[2] & 0b11110000) >> 4] || 0;
+  if (header.bitrate === -1) return;
 
   header.sampleRate = mpegVersion.sampleRates![(data[2] & 0b00001100) >> 2] as number;
   if (!header.sampleRate) return;
@@ -278,7 +272,7 @@ export function* getHeader(codecParser: ICodecParser, headerCache: HeaderCache, 
   header.channelMode = channelModes[channelModeBits].description;
   header.channels = channelModes[channelModeBits].channels;
 
-  header.modeExtension = layer.modeExtensions![data[3] & 0b00110000];
+  header.modeExtension = layer.modeExtensions![data[3] & 0b00110000] as unknown as string; // TODO:
   header.isCopyrighted = Boolean(data[3] & 0b00001000);
   header.isOriginal = Boolean(data[3] & 0b00000100);
 
