@@ -22,8 +22,6 @@ import { frameStore } from "../globals";
 import { FrameHeaderOf, GetFrame, GetHeader, OnCodec } from "../types";
 import { HeaderCache } from "./HeaderCache";
 
-export type ParserConstructor = new (codecParser: CodecParser, headerCache: HeaderCache, onCodec?: OnCodec) => Parser<any, any>;
-
 /**
  * Abstract class containing methods for parsing codec frames
  */

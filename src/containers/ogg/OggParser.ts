@@ -30,12 +30,16 @@ import { HeaderCache } from "../../codecs/HeaderCache";
 import { OnCodec } from "../../types";
 import { RawOggPageHeader } from "./OggPageHeader";
 
+type NestedParser = OpusParser | FLACParser | VorbisParser;
+
+type ParserConstructor = new (codecParser: CodecParser, headerCache: HeaderCache, onCodec?: OnCodec) => NestedParser;
+
 export class OggParser extends Parser<OggPage> {
   private _codec?: string;
   private onCodec: OnCodec;
   private continuedPacket: Uint8Array;
   private pageSequenceNumber: number;
-  private parser!: OpusParser | FLACParser | VorbisParser;
+  private parser!: NestedParser;
 
   constructor(codecParser: CodecParser, headerCache: HeaderCache, onCodec: OnCodec) {
     super(codecParser, headerCache, getFrame);
@@ -52,7 +56,7 @@ export class OggParser extends Parser<OggPage> {
 
   private updateCodec(codec: string, ParserCtor: ParserConstructor) {
     if (this._codec !== codec) {
-      this.parser = new ParserCtor(this.codecParser, this.headerCache) as (OpusParser | FLACParser | VorbisParser);
+      this.parser = new ParserCtor(this.codecParser, this.headerCache);
       this._codec = codec;
       this.onCodec(codec);
     }
