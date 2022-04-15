@@ -155,7 +155,7 @@ type RawAACHeader = RawCodecHeader & {
   bufferFullness: any;
 }
 
-export function *getHeader(codecParser: CodecParser, headerCache: HeaderCache, readOffset: number): Generator<Uint8Array | undefined, AACHeader | null, Uint8Array> {
+export function *getHeader(codecParser: CodecParser, headerCache: HeaderCache, readOffset: number): Generator<Uint8Array, AACHeader | null, Uint8Array> {
   const header = {} as RawAACHeader;
 
   // Must be at least seven bytes. Out of data

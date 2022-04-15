@@ -155,12 +155,11 @@ export class CodecParser {
 
   /**
    * The reader, called by anything that wants data
-   * @param {number} minSize Minimum bytes to have present in buffer
-   * @returns {Uint8Array} rawData
+   * @param minSize Minimum bytes to have present in buffer
    */
-  *readRawData(minSize: number = 0, readOffset: number = 0): Generator<Uint8Array | undefined, Uint8Array, Uint8Array> {
+  *readRawData(minSize: number = 0, readOffset: number = 0): Generator<Uint8Array, Uint8Array, Uint8Array> {
     while (this.rawData.length <= minSize + readOffset) {
-      const newData = yield; // Externally consumed
+      const newData = yield undefined as any; // Externally consumed
 
       if (this.flushing) {
         return this.rawData.subarray(readOffset);

@@ -32,7 +32,7 @@ type ID3v2Header = {
   length: number;
 }
 
-export function *getID3v2Header(codecParser: CodecParser, _headerCache: HeaderCache, readOffset: number): Generator<Uint8Array | undefined, ID3v2 | null, Uint8Array> {
+export function *getID3v2Header(codecParser: CodecParser, _headerCache: HeaderCache, readOffset: number): Generator<Uint8Array, ID3v2 | null, Uint8Array> {
   const header: any = { headerLength: 10 };
 
   let data = yield* codecParser.readRawData(3, readOffset);

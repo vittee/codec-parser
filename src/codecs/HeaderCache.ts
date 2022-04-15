@@ -20,63 +20,61 @@ import { OnCodecUpdate } from "../types";
 import { RawCodecHeader } from "./CodecHeader";
 
 export default class HeaderCache {
-  _onCodecUpdate?: OnCodecUpdate;
-  _isEnabled = false;
-  _headerCache!: Map<any, any>;
-  _codecUpdateData!: WeakMap<object, any>;
-  _codecShouldUpdate = false;
-  _currentHeader!: string;
-  _bitrate = 0;
+  private isEnabled = false;
+  private headerCache!: Map<any, any>;
+  private codecUpdateData!: WeakMap<object, any>;
+  private codecShouldUpdate = false;
+  private currentHeader!: string;
+  private bitrate = 0;
 
-  constructor(onCodecUpdate?: OnCodecUpdate) {
-    this._onCodecUpdate = onCodecUpdate;
+  constructor(private onCodecUpdate?: OnCodecUpdate) {
     this.reset();
   }
 
   enable() {
-    this._isEnabled = true;
+    this.isEnabled = true;
   }
 
   reset() {
-    this._headerCache = new Map();
-    this._codecUpdateData = new WeakMap();
-    this._codecShouldUpdate = false;
-    this._bitrate = 0;
-    this._isEnabled = false;
+    this.headerCache = new Map();
+    this.codecUpdateData = new WeakMap();
+    this.codecShouldUpdate = false;
+    this.bitrate = 0;
+    this.isEnabled = false;
   }
 
   checkCodecUpdate(bitrate: number, totalDuration: number) {
-    if (this._onCodecUpdate) {
-      if (this._bitrate !== bitrate) {
-        this._bitrate = bitrate;
-        this._codecShouldUpdate = true;
+    if (this.onCodecUpdate) {
+      if (this.bitrate !== bitrate) {
+        this.bitrate = bitrate;
+        this.codecShouldUpdate = true;
       }
 
-      if (this._codecShouldUpdate) {
-        this._onCodecUpdate(
+      if (this.codecShouldUpdate) {
+        this.onCodecUpdate(
           {
             bitrate,
-            ...this._codecUpdateData.get(
-              this._headerCache.get(this._currentHeader)
+            ...this.codecUpdateData.get(
+              this.headerCache.get(this.currentHeader)
             ),
           },
           totalDuration
         );
       }
 
-      this._codecShouldUpdate = false;
+      this.codecShouldUpdate = false;
     }
   }
 
   updateCurrentHeader(key: string) {
-    if (this._onCodecUpdate && key !== this._currentHeader) {
-      this._codecShouldUpdate = true;
-      this._currentHeader = key;
+    if (this.onCodecUpdate && key !== this.currentHeader) {
+      this.codecShouldUpdate = true;
+      this.currentHeader = key;
     }
   }
 
   getHeader(key: string) {
-    const header = this._headerCache.get(key);
+    const header = this.headerCache.get(key);
 
     if (header) {
       this.updateCurrentHeader(key);
@@ -86,11 +84,11 @@ export default class HeaderCache {
   }
 
   setHeader(key: string, header: RawCodecHeader, codecUpdateFields: any) {
-    if (this._isEnabled) {
+    if (this.isEnabled) {
       this.updateCurrentHeader(key);
 
-      this._headerCache.set(key, header);
-      this._codecUpdateData.set(header, codecUpdateFields);
+      this.headerCache.set(key, header);
+      this.codecUpdateData.set(header, codecUpdateFields);
     }
   }
 }

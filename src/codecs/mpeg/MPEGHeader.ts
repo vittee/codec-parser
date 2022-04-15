@@ -243,7 +243,7 @@ type RawMPEGHeader = RawCodecHeader & {
   emphasis: string;
 }
 
-export function *getHeader(codecParser: CodecParser, headerCache: HeaderCache, readOffset: number): Generator<Uint8Array | undefined, MPEGHeader | null, Uint8Array> {
+export function *getHeader(codecParser: CodecParser, headerCache: HeaderCache, readOffset: number): Generator<Uint8Array, MPEGHeader | null, Uint8Array> {
   const header = {} as RawMPEGHeader;
 
   // check for id3 header

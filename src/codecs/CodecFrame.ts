@@ -31,7 +31,7 @@ export function* getCodecFrame<F extends CodecFrame<any>, H extends Header>(
   codecParser: CodecParser,
   headerCache: HeaderCache,
   readOffset: number)
-  : Generator<Uint8Array | undefined, F | null, Uint8Array> {
+  : Generator<Uint8Array, F | null, Uint8Array> {
 
   const header = yield* getHeader(
     codecParser,
@@ -43,13 +43,13 @@ export function* getCodecFrame<F extends CodecFrame<any>, H extends Header>(
     return null;
   }
 
-  const frameLength = headerStore.get(header).frameLength;
-  const samples = headerStore.get(header).samples;
+  const hdr = headerStore.get(header);
+  
+  const frameLength = hdr.frameLength;
+  const samples = hdr.samples;
 
-  const frame = (yield* codecParser.readRawData(
-    frameLength,
-    readOffset
-  )).subarray(0, frameLength);
+  const frameData = yield* codecParser.readRawData(frameLength, readOffset);
+  const frame = frameData.subarray(0, frameLength);
 
   return new frameFactory(header, frame, samples);
 }
