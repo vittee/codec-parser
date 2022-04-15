@@ -87,11 +87,8 @@ type RawAACHeader = RawCodecHeader & {
   validLayer: boolean;
   protection: boolean;
   length: number;
-  profileBits: number;
-  sampleRateBits: number;
   profile: Profile;
   isPrivate: boolean;
-  channelModeBits: number;
   isOriginal: boolean;
   isHome: boolean;
   copyrightId: boolean;
@@ -99,51 +96,51 @@ type RawAACHeader = RawCodecHeader & {
   samples: number;
   numberAACFrames: number;
   frameLength: number;
-  bufferFullness: any;
+  bufferFullness: any; // TODO:
 }
 
-function makeHeader(data: Uint8Array) {
-  const header = {} as RawAACHeader;
+type StaticHeader = Omit<RawAACHeader, 'frameLength' | 'bufferFullness'>;
 
+function makeHeader(data: Uint8Array): StaticHeader | undefined {
   // Frame sync (all bits must be set): `11111111|1111`:
-  if (data[0] !== 0xff || data[1] < 0xf0) return null;
+  if (data[0] !== 0xff || data[1] < 0xf0) return;
 
   // Byte (2 of 7)
   // * `1111BCCD`
   // * `....B...`: MPEG Version: 0 for MPEG-4, 1 for MPEG-2
   // * `.....CC.`: Layer: always 0
   // * `.......D`: protection absent, Warning, set to 1 if there is no CRC and 0 if there is CRC
-  header.mpegVersion = (data[1] & 0b00001000) ? 2 : 4;
+  const mpegVersion = (data[1] & 0b00001000) ? 2 : 4;
 
-  header.validLayer = (data[1] & 0b00000110) === 0;
-  if (!header.validLayer) return null;
+  const validLayer = (data[1] & 0b00000110) === 0;
+  if (!validLayer) return;
 
   const protectionBit = data[1] & 0b00000001;
-  header.protection = protectionBit ? false : true;
-  header.length = protectionBit ? 7 : 9;
+  const protection = protectionBit ? false : true;
+  const length = protectionBit ? 7 : 9;
 
   // Byte (3 of 7)
   // * `EEFFFFGH`
   // * `EE......`: profile, the MPEG-4 Audio Object Type minus 1
   // * `..FFFF..`: MPEG-4 Sampling Frequency Index (15 is forbidden)
   // * `......G.`: private bit, guaranteed never to be used by MPEG, set to 0 when encoding, ignore when decoding
-  header.profileBits = (data[2] & 0b11000000) >> 6;
-  header.sampleRateBits = (data[2] & 0b00111100) >> 2;
+  const profileBits = (data[2] & 0b11000000) >> 6;
+  const sampleRateBits = (data[2] & 0b00111100) >> 2;
   const privateBit = data[2] & 0b00000010;
 
-  header.profile = profiles[header.profileBits];
+  const profile = profiles[profileBits];
 
-  header.sampleRate = sampleRates[header.sampleRateBits];
-  if (!header.sampleRate) return null;
+  const sampleRate = sampleRates[sampleRateBits];
+  if (!sampleRate) return;
 
-  header.isPrivate = Boolean(privateBit);
+  const isPrivate = Boolean(privateBit);
 
   // Byte (3,4 of 7)
   // * `.......H|HH......`: MPEG-4 Channel Configuration (in the case of 0, the channel configuration is sent via an inband PCE)
-  header.channelModeBits = (((data[2] << 8) | data[3]) & 0b111000000) >> 6;
-  const chMode = channelModes[header.channelModeBits];
-  header.channelMode = chMode.description;
-  header.channels = chMode.channels;
+  const channelModeBits = (((data[2] << 8) | data[3]) & 0b111000000) >> 6;
+  const chMode = channelModes[channelModeBits];
+  const channelMode = chMode.description;
+  const channels = chMode.channels;
 
   // Byte (4 of 7)
   // * `HHIJKLMM`
@@ -151,59 +148,72 @@ function makeHeader(data: Uint8Array) {
   // * `...J....`: home, set to 0 when encoding, ignore when decoding
   // * `....K...`: copyrighted id bit, the next bit of a centrally registered copyright identifier, set to 0 when encoding, ignore when decoding
   // * `.....L..`: copyright id start, signals that this frame's copyright id bit is the first bit of the copyright id, set to 0 when encoding, ignore when decoding
-  header.isOriginal = Boolean(data[3] & 0b00100000);
-  header.isHome = Boolean(data[3] & 0b00001000);
-  header.copyrightId = Boolean(data[3] & 0b00001000);
-  header.copyrightIdStart = Boolean(data[3] & 0b00000100);
-  header.bitDepth = 16;
-  header.samples = 1024;
+  const isOriginal = Boolean(data[3] & 0b00100000);
+  const isHome = Boolean(data[3] & 0b00001000);
+  const copyrightId = Boolean(data[3] & 0b00001000);
+  const copyrightIdStart = Boolean(data[3] & 0b00000100);
 
   // Byte (7 of 7)
   // * `......PP` Number of AAC frames (RDBs) in ADTS frame minus 1, for maximum compatibility always use 1 AAC frame per ADTS frame
-  header.numberAACFrames = data[6] & 0b00000011;
+  const numberAACFrames = data[6] & 0b00000011;
 
-  return header;
+  return {
+    mpegVersion,
+    validLayer,
+    protection,
+    length,
+    profile,
+    sampleRate,
+    isPrivate,
+    channelMode,
+    channels,
+    isOriginal,
+    isHome,
+    copyrightId,
+    copyrightIdStart,
+    bitDepth: 16,
+    samples: 1024,
+    numberAACFrames,
+    bitrate: 0 // TODO:
+  };
 }
 
 export function* getHeader(codecParser: ICodecParser, headerCache: HeaderCache, readOffset: number): Generator<Uint8Array, AACHeader | null, Uint8Array> {
-  const header = {} as RawAACHeader;
-
   // Must be at least seven bytes. Out of data
   const data = yield* codecParser.readRawData(7, readOffset);
 
   // Check header cache
   const key = bytesToString([
-    data[0],
-    data[1],
-    data[2],
-    (data[3] & 0b11111100) | (data[6] & 0b00000011), // frame length, buffer fullness varies so don't cache it
+    data[0], // Sync
+    data[1], // Sync word + Version + Layer + Protection
+    data[2], // Profile + Sampling Index + Private + First bit of channel config
+    // frame length, buffer fullness varies so don't cache it
+    (data[3] & 0b11111100) | (data[6] & 0b00000011), // Channel config + Originality + Home + Copyrighted + RDBs
   ]);
-  const cachedHeader = headerCache.getHeader(key);
 
-  if (!cachedHeader) {
+  const header = (headerCache.getHeader(key) as StaticHeader) ?? (() => {
     const newHeader = makeHeader(data);
 
     if (!newHeader) {
       return null;
     }
 
-    Object.assign(header, newHeader);
-
     const {
       length,
-      channelModeBits,
-      profileBits,
-      sampleRateBits,
-      frameLength,
       samples,
       numberAACFrames,
       ...codecUpdateFields
-    } = header;
-    headerCache.setHeader(key, header, codecUpdateFields);
-  } else {
-    Object.assign(header, cachedHeader);
-  }
+    } = newHeader;
 
+    headerCache.setHeader(key, newHeader, codecUpdateFields);
+
+    return newHeader;
+  })();
+
+  if (!header) {
+    return null;
+  }
+  
   // Byte (4,5,6 of 7)
   // * `.......MM|MMMMMMMM|MMM.....`: frame length, this value must include 7 or 9 bytes of header length: FrameLength = (ProtectionAbsent == 1 ? 7 : 9) + size(AACFrame)
   const frameLength = ((data[3] << 11) | (data[4] << 3) | (data[5] >> 5)) & 0x1fff;
@@ -222,10 +232,6 @@ export function* getHeader(codecParser: ICodecParser, headerCache: HeaderCache, 
 }
 
 export class AACHeader extends CodecHeader {
-  /**
-   * @private
-   * Call AACHeader.getHeader(Array<Uint8>) to get instance
-   */
   constructor(header: RawAACHeader) {
     super(header);
 
@@ -264,21 +270,16 @@ export class AACHeader extends CodecHeader {
     return bytes;
   }
 
-  mpegVersion: MpegVersion;
-  validLayer: boolean;
-  protection: boolean;
-  length: number;
-  // profileBits: number;
-  // sampleRateBits: number;
-  profile: Profile;
-  isPrivate: boolean;
-  // channelModeBits: number;
-  isOriginal: boolean;
-  isHome: boolean;
-  copyrightId: boolean;
-  copyrightIdStart: boolean;
-  // samples: number;
-  numberAACFrames: number;
-  // frameLength: number;
-  bufferFullness: any;
+  readonly mpegVersion: MpegVersion;
+  readonly validLayer: boolean;
+  readonly protection: boolean;
+  readonly length: number;
+  readonly profile: Profile;
+  readonly isPrivate: boolean;
+  readonly isOriginal: boolean;
+  readonly isHome: boolean;
+  readonly copyrightId: boolean;
+  readonly copyrightIdStart: boolean;
+  readonly numberAACFrames: number;
+  readonly bufferFullness: any;
 }
