@@ -70,7 +70,7 @@ import { CodecHeader, RawCodecHeader } from "../CodecHeader";
 import { ICodecParser } from "../../CodecParser";
 import { HeaderCache } from "../HeaderCache";
 
-type MpegVersion = 4 | 2;
+export type MpegVersion = 4 | 2;
 
 const mpegVersion: Record<number, MpegVersion> = {
   0b00000000: 4,
@@ -82,11 +82,13 @@ const protection: Record<number, string> = {
   0b00000001: none,
 };
 
-const profile: Record<number, string> = {
-  0b00000000: "AAC Main",
-  0b01000000: "AAC LC (Low Complexity)",
-  0b10000000: "AAC SSR (Scalable Sample Rate)",
-  0b11000000: "AAC LTP (Long Term Prediction)",
+export type Profile = 'Main' | 'LC' | 'SSR' | 'LTP';
+
+const profile: Record<number, Profile> = {
+  0b00000000: "Main",
+  0b01000000: "LC",
+  0b10000000: "SSR",
+  0b11000000: "LTP"
 };
 
 const sampleRates: Record<number, any> = { // TODO: define shape
@@ -136,7 +138,7 @@ type RawAACHeader = RawCodecHeader & {
   length: number;
   profileBits: number;
   sampleRateBits: number;
-  profile: string;
+  profile: Profile;
   isPrivate: boolean;
   channelModeBits: number;
   isOriginal: boolean;
@@ -299,7 +301,7 @@ export class AACHeader extends CodecHeader {
   length: number;
   // profileBits: number;
   // sampleRateBits: number;
-  profile: string;
+  profile: Profile;
   isPrivate: boolean;
   // channelModeBits: number;
   isOriginal: boolean;
