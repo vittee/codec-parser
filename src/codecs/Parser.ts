@@ -42,12 +42,12 @@ export class Parser<F extends Frame<any>, H = FrameHeaderOf<F>> {
     return "";
   }
 
-  *parseFrame(): Generator<Uint8Array | undefined, F | null | undefined> {
-    return null;
+  *parseFrame(): Generator<Uint8Array | undefined, F | undefined> {
+    return;
   }
 
   *syncFrame() {
-    let frame: F | null;
+    let frame: F | undefined;
 
     do {
       frame = yield* this.getFrame!(this.codecParser, this.headerCache, 0);
@@ -64,7 +64,7 @@ export class Parser<F extends Frame<any>, H = FrameHeaderOf<F>> {
    * Searches for Frames within bytes containing a sequence of known codec frames.
    * @param ignoreNextFrame Set to true to return frames even if the next frame may not exist at the expected location
    */
-  *fixedLengthFrameSync(ignoreNextFrame?: boolean): Generator<Uint8Array | undefined, F | null> {
+  *fixedLengthFrameSync(ignoreNextFrame?: boolean): Generator<Uint8Array | undefined, F | undefined> {
     let frame = yield* this.syncFrame();
     const frameLength = frameStore.get(frame).length;
 
@@ -89,7 +89,5 @@ export class Parser<F extends Frame<any>, H = FrameHeaderOf<F>> {
     );
     this.headerCache.reset(); // frame is invalid and must re-sync and clear cache
     this.codecParser.incrementRawData(1); // increment to invalidate the current frame
-
-    return null;
   }  
 }

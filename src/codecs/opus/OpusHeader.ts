@@ -129,7 +129,6 @@ const configTable: Record<number, any> = {
 
 export type RawOpusHeader = RawCodecHeader & {
   channelMappingFamily: number;
-  length: number;
   data: Uint8Array;
   preSkip: number;
   inputSampleRate: number;

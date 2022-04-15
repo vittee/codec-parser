@@ -86,7 +86,7 @@ type RawAACHeader = RawCodecHeader & {
   mpegVersion: MpegVersion;
   validLayer: boolean;
   protection: boolean;
-  length: number;
+  length: 7 | 9;
   profile: Profile;
   isPrivate: boolean;
   isOriginal: boolean;
@@ -178,7 +178,7 @@ function makeHeader(data: Uint8Array): StaticHeader | undefined {
   };
 }
 
-export function* getHeader(codecParser: ICodecParser, headerCache: HeaderCache, readOffset: number): Generator<Uint8Array, AACHeader | null, Uint8Array> {
+export function* getHeader(codecParser: ICodecParser, headerCache: HeaderCache, readOffset: number) {
   // Must be at least seven bytes. Out of data
   const data = yield* codecParser.readRawData(7, readOffset);
 
@@ -211,13 +211,13 @@ export function* getHeader(codecParser: ICodecParser, headerCache: HeaderCache, 
   })();
 
   if (!header) {
-    return null;
+    return;
   }
   
   // Byte (4,5,6 of 7)
   // * `.......MM|MMMMMMMM|MMM.....`: frame length, this value must include 7 or 9 bytes of header length: FrameLength = (ProtectionAbsent == 1 ? 7 : 9) + size(AACFrame)
   const frameLength = ((data[3] << 11) | (data[4] << 3) | (data[5] >> 5)) & 0x1fff;
-  if (!frameLength) return null;
+  if (!frameLength) return;
 
   // Byte (6,7 of 7)
   // * `...OOOOO|OOOOOO..`: Buffer fullness

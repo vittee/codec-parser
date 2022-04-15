@@ -18,10 +18,11 @@
 
 import { ICodecParser } from "../CodecParser";
 import { HeaderCache } from "../codecs/HeaderCache";
+import { RawHeader } from "../types";
 
 // https://id3.org/Developer%20Information
 
-type ID3v2Header = {
+type ID3v2Header = RawHeader & {
   version: string;
   unsynchronizationFlag: boolean;
   extendedHeaderFlag: boolean;
@@ -29,16 +30,15 @@ type ID3v2Header = {
   footerPresent: boolean;
   headerLength: 10;
   dataLength: number;
-  length: number;
 }
 
-export function *getID3v2Header(codecParser: ICodecParser, _headerCache: HeaderCache, readOffset: number): Generator<Uint8Array, ID3v2 | null, Uint8Array> {
-  const header: any = { headerLength: 10 };
+export function *getID3v2Header(codecParser: ICodecParser, _headerCache: HeaderCache, readOffset: number): Generator<Uint8Array, ID3v2 | undefined, Uint8Array> {
+  const header = { headerLength: 10 } as ID3v2Header;
 
   let data = yield* codecParser.readRawData(3, readOffset);
   // Byte (0-2 of 9)
   // ID3
-  if (data[0] !== 0x49 || data[1] !== 0x44 || data[2] !== 0x33) return null;
+  if (data[0] !== 0x49 || data[1] !== 0x44 || data[2] !== 0x33) return;
 
   data = yield* codecParser.readRawData(header.headerLength, readOffset);
 
@@ -49,7 +49,7 @@ export function *getID3v2Header(codecParser: ICodecParser, _headerCache: HeaderC
 
   // Byte (5 of 9)
   // * `....0000.: Zeros (flags not implemented yet)
-  if (data[5] & 0b00001111) return null;
+  if (data[5] & 0b00001111) return;
 
   // Byte (5 of 9)
   // * `CDEF0000`: Flags
@@ -70,7 +70,7 @@ export function *getID3v2Header(codecParser: ICodecParser, _headerCache: HeaderC
     data[8] & 0b10000000 ||
     data[9] & 0b10000000
   )
-    return null;
+    return;
 
   // Byte (6-9 of 9)
   // * `.FFFFFFF|.FFFFFFF|.FFFFFFF|.FFFFFFF`: Tag Length

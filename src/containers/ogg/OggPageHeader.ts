@@ -63,13 +63,12 @@ export type RawOggPageHeader = RawCodecHeader & {
   streamSerialNumber: number;
   pageSequenceNumber: number;
   pageChecksum: number;
-  length: number;
   frameLength: number;
   pageSegmentTable: number[];
   pageSegmentBytes: Uint8Array;
 }
 
-export function *getHeader(codecParser: ICodecParser, _headerCache: HeaderCache, readOffset: number) {
+export function* getHeader(codecParser: ICodecParser, _headerCache: HeaderCache, readOffset: number) {
   const header = {} as RawOggPageHeader;
 
   // Must be at least 28 bytes.

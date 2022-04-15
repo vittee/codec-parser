@@ -31,7 +31,7 @@ export function* getCodecFrame<F extends CodecFrame<any>, H extends Header>(
   codecParser: CodecParser,
   headerCache: HeaderCache,
   readOffset: number)
-  : Generator<Uint8Array, F | null, Uint8Array> {
+  : Generator<Uint8Array, F | undefined, Uint8Array> {
 
   const header = yield* getHeader(
     codecParser,
@@ -40,7 +40,7 @@ export function* getCodecFrame<F extends CodecFrame<any>, H extends Header>(
   );
 
   if (!header) {
-    return null;
+    return;
   }
 
   const hdr = headerStore.get(header);

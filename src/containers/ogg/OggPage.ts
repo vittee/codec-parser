@@ -30,22 +30,22 @@ export function *getFrame(codecParser: CodecParser, headerCache: HeaderCache, re
     readOffset
   );
 
-  if (header) {
-    const frameLength = headerStore.get(header).frameLength;
-    const headerLength = headerStore.get(header).length;
-    const totalLength = headerLength + frameLength;
-
-    const rawData = (yield* codecParser.readRawData(totalLength, 0)).subarray(
-      0,
-      totalLength
-    );
-
-    const frame = rawData.subarray(headerLength, totalLength);
-
-    return new OggPage(header, frame, rawData);
-  } else {
-    return null;
+  if (!header) {
+    return;
   }
+  
+  const frameLength = headerStore.get(header).frameLength;
+  const headerLength = headerStore.get(header).length;
+  const totalLength = headerLength + frameLength;
+
+  const rawData = (yield* codecParser.readRawData(totalLength, 0)).subarray(
+    0,
+    totalLength
+  );
+
+  const frame = rawData.subarray(headerLength, totalLength);
+
+  return new OggPage(header, frame, rawData);
 }
 
 export class OggPage extends Frame<OggPageHeader> {

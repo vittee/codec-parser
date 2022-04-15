@@ -55,7 +55,6 @@ const blockSizes: Record<number, number> = {
 for (let i = 0; i < 8; i++) blockSizes[i + 6] = 2 ** (6 + i);
 
 export type RawVorbisHeader = RawCodecHeader & {
-  length: number;
   data: Uint8Array;
   version: number;
   bitrateMaximum: number;

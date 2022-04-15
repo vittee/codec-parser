@@ -70,7 +70,7 @@ const calcBitrate = (idx: number, interval: number, intervalOffset: number) =>
   8 * interval * ((interval / 8) | 0);
 
 // generate bitrate matrix
-for (let i = 2; i < 15; i++)
+for (let i = 2; i < 15; i++) {
   bitrateMatrix[i << 4] = [
     i * 32, //                V1,L1
     calcBitrate(i, 4, 0), //  V1,L2
@@ -78,6 +78,7 @@ for (let i = 2; i < 15; i++)
     calcBitrate(i, 8, 4), //  V2,L1
     calcBitrate(i, 8, 0), //  V2,L2 & L3
   ];
+}
 
 const v1Layer1 = 0;
 const v1Layer2 = 1;
@@ -121,7 +122,7 @@ type Layer = {
   }
 }
 
-const layers: Record<number, Layer> = { // TODO: Define shape
+const layers: Record<number, Layer> = {
   0b00000000: { description: reserved },
   0b00000010: {
     description: "Layer III",
@@ -233,7 +234,6 @@ type RawMPEGHeader = RawCodecHeader & {
   layer: string;
   samples: number;
   protection: string;
-  length: number;
   framePadding: number;
   isPrivate: boolean;
   frameLength: number;
@@ -243,7 +243,7 @@ type RawMPEGHeader = RawCodecHeader & {
   emphasis: string;
 }
 
-export function *getHeader(codecParser: ICodecParser, headerCache: HeaderCache, readOffset: number): Generator<Uint8Array, MPEGHeader | null, Uint8Array> {
+export function* getHeader(codecParser: ICodecParser, headerCache: HeaderCache, readOffset: number) {
   const header = {} as RawMPEGHeader;
 
   // check for id3 header
@@ -263,12 +263,12 @@ export function *getHeader(codecParser: ICodecParser, headerCache: HeaderCache, 
   const data = yield* codecParser.readRawData(4, readOffset);
 
   // Check header cache
-  const key = bytesToString(data.subarray(0, 4) as unknown as number[]); // FIXME: Uint8Array vs number[]
+  const key = bytesToString(data.subarray(0, 4));
   const cachedHeader = headerCache.getHeader(key);
   if (cachedHeader) return new MPEGHeader(cachedHeader);
 
   // Frame sync (all bits must be set): `11111111|111`:
-  if (data[0] !== 0xff || data[1] < 0xe0) return null;
+  if (data[0] !== 0xff || data[1] < 0xe0) return;
 
   // Byte (2 of 4)
   // * `111BBCCD`
@@ -278,11 +278,12 @@ export function *getHeader(codecParser: ICodecParser, headerCache: HeaderCache, 
 
   // Mpeg version (1, 2, 2.5)
   const mpegVersion = mpegVersions[data[1] & 0b00011000];
-  if (mpegVersion.description === reserved) return null;
+  if (mpegVersion.description === reserved) return;
 
   // Layer (I, II, III)
   const layerBits = data[1] & 0b00000110;
-  if (layers[layerBits].description === reserved) return null;
+
+  if (layers[layerBits].description === reserved) return;
   const layer: Layer & Partial<Layer['v1']> = {
     ...layers[layerBits],
     ...layers[layerBits][mpegVersion.layers!],
@@ -302,10 +303,10 @@ export function *getHeader(codecParser: ICodecParser, headerCache: HeaderCache, 
   // * `......G.`: Padding bit, 0=frame not padded, 1=frame padded
   // * `.......H`: Private bit.
   header.bitrate = bitrateMatrix[data[2] & 0b11110000][layer.bitrateIndex ?? 0];
-  if (header.bitrate as any === bad) return null;
+  if (header.bitrate as any === bad) return;
 
   header.sampleRate = mpegVersion.sampleRates![data[2] & 0b00001100] as number;
-  if (header.sampleRate as any === reserved) return null;
+  if (header.sampleRate as any === reserved) return;
 
   header.framePadding = data[2] & 0b00000010 && (layer.framePadding ?? 0);
   header.isPrivate = Boolean(data[2] & 0b00000001);
@@ -314,7 +315,7 @@ export function *getHeader(codecParser: ICodecParser, headerCache: HeaderCache, 
     (125 * header.bitrate * header.samples) / header.sampleRate +
       header.framePadding
   );
-  if (!header.frameLength) return null;
+  if (!header.frameLength) return;
 
   // Byte (4 of 4)
   // * `IIJJKLMM`
@@ -332,7 +333,7 @@ export function *getHeader(codecParser: ICodecParser, headerCache: HeaderCache, 
   header.isOriginal = Boolean(data[3] & 0b00000100);
 
   header.emphasis = emphasis[data[3] & 0b00000011];
-  if (header.emphasis === reserved) return null;
+  if (header.emphasis === reserved) return;
 
   header.bitDepth = 16;
 

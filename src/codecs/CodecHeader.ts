@@ -18,8 +18,9 @@
 
 import { Header } from "../containers/Frame";
 import { headerStore } from "../globals";
+import { RawHeader } from "../types";
 
-export type RawCodecHeader = {
+export type RawCodecHeader = RawHeader & {
   bitDepth: number;
 
   bitrate: number;

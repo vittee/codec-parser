@@ -172,7 +172,7 @@ export type RawFLACHeader = RawCodecHeader & {
   crc: number;
 }
 
-export function *getHeader(codecParser: ICodecParser, headerCache: HeaderCache, readOffset: number) {
+export function* getHeader(codecParser: ICodecParser, headerCache: HeaderCache, readOffset: number) {
   // Must be at least 6 bytes.
   let data = yield* codecParser.readRawData(6, readOffset);
 
