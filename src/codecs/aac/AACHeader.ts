@@ -44,22 +44,8 @@ Q  16  CRC if protection absent is 0
 import { headerStore } from "../../globals";
 import { bytesToString } from "../../utilities";
 import {
-  reserved,
   none,
   sixteenBitCRC,
-  rate96000,
-  rate88200,
-  rate64000,
-  rate48000,
-  rate44100,
-  rate32000,
-  rate24000,
-  rate22050,
-  rate16000,
-  rate12000,
-  rate11025,
-  rate8000,
-  rate7350,
   channelMappings,
   getChannelMapping,
   monophonic,
@@ -72,37 +58,14 @@ import { HeaderCache } from "../HeaderCache";
 
 export type MpegVersion = 4 | 2;
 
-export type Profile = 'Main' | 'LC' | 'SSR' | 'LTP';
+const profiles = ['Main', 'LC', 'SSR', 'LTP'] as const;
 
-const profiles: Record<number, Profile> = {
-  0b00: "Main",
-  0b01: "LC",
-  0b10: "SSR",
-  0b11: "LTP"
-};
+export type Profile = typeof profiles[number];
 
-const sampleRates: Record<number, any> = { // TODO: define shape
-  0b00000000: rate96000,
-  0b00000100: rate88200,
-  0b00001000: rate64000,
-  0b00001100: rate48000,
-  0b00010000: rate44100,
-  0b00010100: rate32000,
-  0b00011000: rate24000,
-  0b00011100: rate22050,
-  0b00100000: rate16000,
-  0b00100100: rate12000,
-  0b00101000: rate11025,
-  0b00101100: rate8000,
-  0b00110000: rate7350,
-  0b00110100: reserved,
-  0b00111000: reserved,
-  0b00111100: "frequency is written explicitly",
-};
+const sampleRates = [96000, 88200, 64000, 48000, 44100, 32000, 24000, 22050, 16000, 12000, 11025, 8000, 7350];
 
-// prettier-ignore
-const channelMode: Record<number, any> = { // TODO: define shape
-  0b000000000: { channels: 0, description: "Defined in AOT Specific Config" },
+const channelModes = [
+  { channels: 0, description: "Defined in AOT Specific Config" },
   /*
   'monophonic (mono)'
   'stereo (left, right)'
@@ -112,14 +75,14 @@ const channelMode: Record<number, any> = { // TODO: define shape
   '5.1 surround (front center, front left, front right, rear left, rear right, LFE)'
   '7.1 surround (front center, front left, front right, side left, side right, rear left, rear right, LFE)'
   */
-  0b001000000: { channels: 1, description: monophonic },
-  0b010000000: { channels: 2, description: getChannelMapping(2, channelMappings[0][0]) },
-  0b011000000: { channels: 3, description: getChannelMapping(3, channelMappings[1][3]), },
-  0b100000000: { channels: 4, description: getChannelMapping(4, channelMappings[1][3], channelMappings[3][4]), },
-  0b101000000: { channels: 5, description: getChannelMapping(5, channelMappings[1][3], channelMappings[3][0]), },
-  0b110000000: { channels: 6, description: getChannelMapping(6, channelMappings[1][3], channelMappings[3][0], lfe), },
-  0b111000000: { channels: 8, description: getChannelMapping(8, channelMappings[1][3], channelMappings[2][0], channelMappings[3][0], lfe), },
-};
+  { channels: 1, description: monophonic },
+  { channels: 2, description: getChannelMapping(2, channelMappings[0][0]) },
+  { channels: 3, description: getChannelMapping(3, channelMappings[1][3]), },
+  { channels: 4, description: getChannelMapping(4, channelMappings[1][3], channelMappings[3][4]), },
+  { channels: 5, description: getChannelMapping(5, channelMappings[1][3], channelMappings[3][0]), },
+  { channels: 6, description: getChannelMapping(6, channelMappings[1][3], channelMappings[3][0], lfe), },
+  { channels: 8, description: getChannelMapping(8, channelMappings[1][3], channelMappings[2][0], channelMappings[3][0], lfe), },
+];
 
 type RawAACHeader = RawCodecHeader & {
   mpegVersion: MpegVersion;
@@ -167,21 +130,22 @@ function makeHeader(data: Uint8Array) {
   // * `..FFFF..`: MPEG-4 Sampling Frequency Index (15 is forbidden)
   // * `......G.`: private bit, guaranteed never to be used by MPEG, set to 0 when encoding, ignore when decoding
   header.profileBits = (data[2] & 0b11000000) >> 6;
-  header.sampleRateBits = data[2] & 0b00111100;
+  header.sampleRateBits = (data[2] & 0b00111100) >> 2;
   const privateBit = data[2] & 0b00000010;
 
   header.profile = profiles[header.profileBits];
 
   header.sampleRate = sampleRates[header.sampleRateBits];
-  if ((header.sampleRate as any) === reserved) return null;
+  if (!header.sampleRate) return null;
 
   header.isPrivate = Boolean(privateBit);
 
   // Byte (3,4 of 7)
   // * `.......H|HH......`: MPEG-4 Channel Configuration (in the case of 0, the channel configuration is sent via an inband PCE)
-  header.channelModeBits = ((data[2] << 8) | data[3]) & 0b111000000;
-  header.channelMode = channelMode[header.channelModeBits].description;
-  header.channels = channelMode[header.channelModeBits].channels;
+  header.channelModeBits = (((data[2] << 8) | data[3]) & 0b111000000) >> 6;
+  const chMode = channelModes[header.channelModeBits];
+  header.channelMode = chMode.description;
+  header.channels = chMode.channels;
 
   // Byte (4 of 7)
   // * `HHIJKLMM`
