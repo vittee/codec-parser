@@ -52,7 +52,7 @@ export default class OggParser extends Parser<OggPage> {
 
   _updateCodec(codec: string, ParserClass: typeof Parser) { // TODO: newable
     if (this._codec !== codec) {
-      this._parser = new ParserClass(this._codecParser, this._headerCache) as any;
+      this._parser = new ParserClass(this.codecParser, this.headerCache) as any;
       this._codec = codec;
       this._onCodec(codec);
     }
@@ -83,7 +83,7 @@ export default class OggParser extends Parser<OggPage> {
 
   _checkPageSequenceNumber(oggPage: OggPage) {
     if (oggPage.pageSequenceNumber !== this._pageSequenceNumber + 1 && this._pageSequenceNumber > 1 && oggPage.pageSequenceNumber > 1) {
-      this._codecParser.logWarning(
+      this.codecParser.logWarning(
         "Unexpected gap in Ogg Page Sequence Number.",
         `Expected: ${this._pageSequenceNumber + 1}, Got: ${
           oggPage.pageSequenceNumber
@@ -127,7 +127,7 @@ export default class OggParser extends Parser<OggPage> {
 
     if (this._codec || this._checkForIdentifier(oggPage)) {
       const frame = this._parser.parseOggPage(oggPage);
-      this._codecParser.mapFrameStats(frame);
+      this.codecParser.mapFrameStats(frame);
       return frame;
     }
   }

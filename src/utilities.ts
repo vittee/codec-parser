@@ -55,12 +55,8 @@ for (let i = 0; i < 15; i++) {
   crc32Table.push(new Uint32Array(256));
 
   for (let j = 0; j <= 0xff; j++) {
-    flacCrc16Table[i + 1][j] =
-      flacCrc16Table[0][flacCrc16Table[i][j] >>> 8] ^
-      (flacCrc16Table[i][j] << 8);
-
-    crc32Table[i + 1][j] =
-      (crc32Table[i][j] >>> 8) ^ crc32Table[0][crc32Table[i][j] & 0xff];
+    flacCrc16Table[i + 1][j] = flacCrc16Table[0][flacCrc16Table[i][j] >>> 8] ^ (flacCrc16Table[i][j] << 8);
+    crc32Table[i + 1][j] = (crc32Table[i][j] >>> 8) ^ crc32Table[0][crc32Table[i][j] & 0xff];
   }
 }
 
@@ -68,7 +64,9 @@ const crc8 = (data: Uint8Array) => {
   let crc = 0;
   const dataLength = data.length;
 
-  for (let i = 0; i !== dataLength; i++) crc = crc8Table[crc ^ data[i]];
+  for (let i = 0; i !== dataLength; i++) {
+    crc = crc8Table[crc ^ data[i]];
+  }
 
   return crc;
 };
@@ -100,8 +98,9 @@ const flacCrc16 = (data: Uint8Array) => {
       flacCrc16Table[0][data[i++]];
   }
 
-  while (i !== dataLength)
+  while (i !== dataLength) {
     crc = ((crc & 0xff) << 8) ^ flacCrc16Table[0][(crc >> 8) ^ data[i++]];
+  }
 
   return crc;
 };
@@ -112,8 +111,8 @@ const crc32 = (data: Uint8Array) => {
   let crc = 0;
   let i = 0;
 
-  while (i <= crcChunkSize)
-    crc =
+  while (i <= crcChunkSize) {
+    crc = 0 ^
       crc32Table[15][(data[i++] ^ crc) & 0xff] ^
       crc32Table[14][(data[i++] ^ (crc >>> 8)) & 0xff] ^
       crc32Table[13][(data[i++] ^ (crc >>> 16)) & 0xff] ^
@@ -130,9 +129,11 @@ const crc32 = (data: Uint8Array) => {
       crc32Table[2][data[i++]] ^
       crc32Table[1][data[i++]] ^
       crc32Table[0][data[i++]];
+  }
 
-  while (i !== dataLength)
+  while (i !== dataLength) {
     crc = crc32Table[0][(crc ^ data[i++]) & 0xff] ^ (crc >>> 8);
+  }
 
   return crc ^ -1;
 };
@@ -152,8 +153,7 @@ const concatBuffers = (...buffers: Uint8Array[]) => {
 
 const bytesToString = (bytes: number[] | Uint8Array) => String.fromCharCode(...bytes);
 
-// prettier-ignore
-const reverseTable = [0x0,0x8,0x4,0xc,0x2,0xa,0x6,0xe,0x1,0x9,0x5,0xd,0x3,0xb,0x7,0xf];
+const reverseTable = [0x0, 0x8, 0x4, 0xc, 0x2, 0xa, 0x6, 0xe, 0x1, 0x9, 0x5, 0xd, 0x3, 0xb, 0x7, 0xf] as const;
 const reverse = (val: number) =>
   (reverseTable[val & 0b1111] << 4) | reverseTable[val >> 4];
 
@@ -169,8 +169,7 @@ class BitReader {
     const bit = this.position % 8;
     this.position -= bits;
 
-    const window =
-      (reverse(this.data[byte - 1]) << 8) + reverse(this.data[byte]);
+    const window = (reverse(this.data[byte - 1]) << 8) + reverse(this.data[byte]);
 
     return (window >> (7 - bit)) & 0xff;
   }

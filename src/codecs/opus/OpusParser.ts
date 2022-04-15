@@ -44,7 +44,7 @@ export default class OpusParser extends Parser<OpusFrame> {
     if (oggPage.pageSequenceNumber === 0) {
       // Identification header
 
-      this._headerCache.enable();
+      this.headerCache.enable();
       this._identificationHeader = oggPage.data;
     } else if (oggPage.pageSequenceNumber === 1) {
       // OpusTags
@@ -53,14 +53,14 @@ export default class OpusParser extends Parser<OpusFrame> {
         const header = getHeaderFromUint8Array(
           this._identificationHeader,
           segment,
-          this._headerCache
+          this.headerCache
         );
 
         if (header) {
           return new OpusFrame(segment, header);
         }
 
-        this._codecParser.logError(
+        this.codecParser.logError(
           "Failed to parse Ogg Opus Header",
           "Not a valid Ogg Opus file"
         );

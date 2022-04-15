@@ -39,37 +39,37 @@ export type CodecParserOptions = {
 }
 
 export class CodecParser {
-  private _flushing = false;
+  private flushing = false;
 
-  private _generator: ReturnType<typeof this.makeGenterator>;
-  private _totalBytesIn: number = 0;
-  private _onCodecUpdate?: OnCodecUpdate;
-  private _enableLogging: boolean | undefined;
-  private _onCodec: OnCodec;
-  private _frameNumber: number = 0;
-  private _currentReadPosition: number = 0;
-  private _totalSamples: number = 0;
-  private _totalBytesOut: number = 0;
-  private _sampleRate: number = 0;
+  private generator: ReturnType<typeof this.makeGenterator>;
+  private totalBytesIn: number = 0;
+  private onCodecUpdate?: OnCodecUpdate;
+  private enableLogging: boolean | undefined;
+  private onCodec: OnCodec;
+  private frameNumber: number = 0;
+  private currentReadPosition: number = 0;
+  private totalSamples: number = 0;
+  private totalBytesOut: number = 0;
+  private sampleRate: number = 0;
 
-  private _parser!: Parser<Frame<Header>, Header>;
+  private parser!: Parser<Frame<Header>, Header>;
 
-  private _rawData!: Uint8Array;
+  private rawData!: Uint8Array;
 
-  private _headerCache!: HeaderCache;
+  private headerCache!: HeaderCache;
 
 
   constructor(private _inputMimeType: SupportedMimeTypes, options: CodecParserOptions = {}) {
-    this._onCodec = options.onCodec || noOp;
-    this._onCodecUpdate = options.onCodecUpdate;
-    this._enableLogging = options.enableLogging;
+    this.onCodec = options.onCodec || noOp;
+    this.onCodecUpdate = options.onCodecUpdate;
+    this.enableLogging = options.enableLogging;
 
-    this._generator = this.makeGenterator();
-    this._generator.next();
+    this.generator = this.makeGenterator();
+    this.generator.next();
   }
 
   get isFlushing() {
-    return this._flushing;
+    return this.flushing;
   }
 
   /**
@@ -77,7 +77,7 @@ export class CodecParser {
    * @returns The detected codec
    */
   get codec() {
-    return this._parser.codec;
+    return this.parser.codec;
   }
 
   /**
@@ -87,16 +87,16 @@ export class CodecParser {
    * @yields {CodecFrame|OggPage} Parsed codec or ogg page data
    */
   *flush(): Iterable<CodecFrame | OggPage> {
-    this._flushing = true;
+    this.flushing = true;
 
-    for (let i = this._generator.next(); i.value; i = this._generator.next()) {
+    for (let i = this.generator.next(); i.value; i = this.generator.next()) {
       yield i.value;
     }
 
-    this._flushing = false;
+    this.flushing = false;
 
-    this._generator = this.makeGenterator();
-    this._generator.next();
+    this.generator = this.makeGenterator();
+    this.generator.next();
   }
 
   /**
@@ -108,7 +108,7 @@ export class CodecParser {
    */
   *parseChunk(chunk: Uint8Array): Generator<Frame<any>> {
     // This will end up being the rawData in Parser's parseFrame
-    for (let it = this._generator.next(chunk); it.value; it = this._generator.next()) {
+    for (let it = this.generator.next(chunk); it.value; it = this.generator.next()) {
       yield it.value;
     }
   }
@@ -121,32 +121,32 @@ export class CodecParser {
   }
 
   private *makeGenterator(): Generator<Frame<any> | Uint8Array | undefined> {
-    this._headerCache = new HeaderCache(this._onCodecUpdate);
+    this.headerCache = new HeaderCache(this.onCodecUpdate);
 
     if (this._inputMimeType.match(/aac/)) {
-      this._parser = new AACParser(this, this._headerCache, this._onCodec);
+      this.parser = new AACParser(this, this.headerCache, this.onCodec);
     } else if (this._inputMimeType.match(/mpeg/)) {
-      this._parser = new MPEGParser(this, this._headerCache, this._onCodec);
+      this.parser = new MPEGParser(this, this.headerCache, this.onCodec);
     } else if (this._inputMimeType.match(/flac/)) {
-      this._parser = new FLACParser(this, this._headerCache, this._onCodec);
+      this.parser = new FLACParser(this, this.headerCache, this.onCodec);
     } else if (this._inputMimeType.match(/ogg/)) {
-      this._parser = new OggParser(this, this._headerCache, this._onCodec);
+      this.parser = new OggParser(this, this.headerCache, this.onCodec);
     } else {
       throw new Error(`Unsupported Codec ${this._inputMimeType}`);
     }
 
-    this._frameNumber = 0;
-    this._currentReadPosition = 0;
-    this._totalBytesIn = 0;
-    this._totalBytesIn = 0;
-    this._totalSamples = 0;
-    this._sampleRate = 0;
+    this.frameNumber = 0;
+    this.currentReadPosition = 0;
+    this.totalBytesIn = 0;
+    this.totalBytesIn = 0;
+    this.totalSamples = 0;
+    this.sampleRate = 0;
 
-    this._rawData = new Uint8Array(0);
+    this.rawData = new Uint8Array(0);
 
     // start parsing out frames
     for (;;) {
-      const frame = yield* this._parser.parseFrame();
+      const frame = yield* this.parser.parseFrame();
       if (frame) {
         yield frame;
       }
@@ -155,61 +155,53 @@ export class CodecParser {
 
   /**
    * The reader, called by anything that wants data
-   * @protected
    * @param {number} minSize Minimum bytes to have present in buffer
    * @returns {Uint8Array} rawData
    */
   *readRawData(minSize: number = 0, readOffset: number = 0): Generator<Uint8Array | undefined, Uint8Array, Uint8Array> {
-    while (this._rawData.length <= minSize + readOffset) {
+    while (this.rawData.length <= minSize + readOffset) {
       const newData = yield; // Externally consumed
 
-      if (this._flushing) {
-        return this._rawData.subarray(readOffset);
+      if (this.flushing) {
+        return this.rawData.subarray(readOffset);
       }
 
       if (newData) {
-        this._totalBytesIn += newData.length;
-        this._rawData = concatBuffers(this._rawData, newData);
+        this.totalBytesIn += newData.length;
+        this.rawData = concatBuffers(this.rawData, newData);
       }
     }
 
-    return this._rawData.subarray(readOffset);
+    return this.rawData.subarray(readOffset);
   }
 
   /**
-   * @protected
    * @param {number} increment Bytes to increment codec data
    */
   incrementRawData(increment: number) {
-    this._currentReadPosition += increment;
-    this._rawData = this._rawData.subarray(increment);
+    this.currentReadPosition += increment;
+    this.rawData = this.rawData.subarray(increment);
   }
 
-  /**
-   * @protected
-   */
   mapCodecFrameStats(frame: CodecFrame) {
-    this._sampleRate = frame.header.sampleRate;
+    this.sampleRate = frame.header.sampleRate;
 
     frame.header.bitrate = Math.round(frame.data.length / frame.duration) * 8;
-    frame.frameNumber = this._frameNumber++;
-    frame.totalBytesOut = this._totalBytesOut;
-    frame.totalSamples = this._totalSamples;
-    frame.totalDuration = (this._totalSamples / this._sampleRate) * 1000;
+    frame.frameNumber = this.frameNumber++;
+    frame.totalBytesOut = this.totalBytesOut;
+    frame.totalSamples = this.totalSamples;
+    frame.totalDuration = (this.totalSamples / this.sampleRate) * 1000;
     frame.crc32 = crc32(frame.data);
 
-    this._headerCache.checkCodecUpdate(
+    this.headerCache.checkCodecUpdate(
       frame.header.bitrate,
       frame.totalDuration
     );
 
-    this._totalBytesOut += frame.data.length;
-    this._totalSamples += frame.samples;
+    this.totalBytesOut += frame.data.length;
+    this.totalSamples += frame.samples;
   }
 
-  /**
-   * @protected
-   */
   mapFrameStats(frame: Frame<any>) {
     if (frame instanceof OggPage) {
       // Ogg container
@@ -219,26 +211,23 @@ export class CodecParser {
         this.mapCodecFrameStats(codecFrame);
       });
 
-      frame.totalSamples = this._totalSamples;
-      frame.totalDuration = (this._totalSamples / this._sampleRate) * 1000 || 0;
-      frame.totalBytesOut = this._totalBytesOut;
+      frame.totalSamples = this.totalSamples;
+      frame.totalDuration = (this.totalSamples / this.sampleRate) * 1000 || 0;
+      frame.totalBytesOut = this.totalBytesOut;
       return;
     }
     
     this.mapCodecFrameStats(frame as CodecFrame);    
   }
 
-  /**
-   * @private
-   */
-  _log(logger: (...args: any[]) => any, messages: any[]) {
-    if (this._enableLogging) {
+  private log(logger: (...args: any[]) => any, messages: any[]) {
+    if (this.enableLogging) {
       const stats = [
         `codec:         ${this.codec}`,
         `inputMimeType: ${this._inputMimeType}`,
-        `readPosition:  ${this._currentReadPosition}`,
-        `totalBytesIn:  ${this._totalBytesIn}`,
-        `totalBytesOut: ${this._totalBytesOut}`,
+        `readPosition:  ${this.currentReadPosition}`,
+        `totalBytesIn:  ${this.totalBytesIn}`,
+        `totalBytesOut: ${this.totalBytesOut}`,
       ];
 
       const width = Math.max(...stats.map((s) => s.length));
@@ -256,17 +245,19 @@ export class CodecParser {
     }
   }
 
+  // Could be function
   /**
    * @protected
    */
   logWarning(...messages: any[]) {
-    this._log(console.warn, messages);
+    this.log(console.warn, messages);
   }
 
+  // COuld be function
   /**
    * @protected
    */
   logError(...messages: any[]) {
-    this._log(console.error, messages);
+    this.log(console.error, messages);
   }
 }

@@ -55,7 +55,7 @@ export default class VorbisParser extends Parser<VorbisFrame> {
     if (oggPage.pageSequenceNumber === 0) {
       // Identification header
 
-      this._headerCache.enable();
+      this.headerCache.enable();
       this._identificationHeader = oggPage.data;
     } else if (oggPage.pageSequenceNumber === 1) {
       // gather WEBM CodecPrivate data
@@ -69,7 +69,7 @@ export default class VorbisParser extends Parser<VorbisFrame> {
       oggPage.codecFrames = oggPageSegments.map((segment) => {
         const header = getHeaderFromUint8Array( // TODO: Use function
           this._identificationHeader,
-          this._headerCache
+          this.headerCache
         );
 
         if (header) {
@@ -83,7 +83,7 @@ export default class VorbisParser extends Parser<VorbisFrame> {
           );
         }
 
-        this._codecParser.logError(
+        this.codecParser.logError(
           "Failed to parse Ogg Vorbis Header",
           "Not a valid Ogg Vorbis file"
         );
@@ -170,7 +170,7 @@ export default class VorbisParser extends Parser<VorbisFrame> {
         mapping in mode &&
         !(mode.count === 1 && mapping === 0) // allows for the possibility of only one mode
       ) {
-        this._codecParser.logError(
+        this.codecParser.logError(
           "received duplicate mode mapping" + failedToParseVorbisModes
         );
         throw new Error(failedToParseVorbisStream);
@@ -190,7 +190,7 @@ export default class VorbisParser extends Parser<VorbisFrame> {
         // transform type and window type were not all zeros
         // check for mode count using previous iteration modeBits
         if (((reverse(modeBits) & 0b01111110) >> 1) + 1 !== mode.count) {
-          this._codecParser.logError(
+          this.codecParser.logError(
             "mode count did not match actual modes" + failedToParseVorbisModes
           );
           throw new Error(failedToParseVorbisStream);

@@ -40,7 +40,7 @@ export default class FLACParser extends Parser<FLACFrame> {
   }
 
   *_getNextFrameSyncOffset(offset: number) {
-    const data = yield* this._codecParser.readRawData(2, 0);
+    const data = yield* this.codecParser.readRawData(2, 0);
     const dataLength = data.length - 2;
 
     while (offset < dataLength) {
@@ -62,8 +62,8 @@ export default class FLACParser extends Parser<FLACFrame> {
     // find the first valid frame header
     do {
       const header = yield* getHeader(
-        this._codecParser,
-        this._headerCache,
+        this.codecParser,
+        this.headerCache,
         0
       );
 
@@ -75,19 +75,19 @@ export default class FLACParser extends Parser<FLACFrame> {
 
         while (nextHeaderOffset <= MAX_FLAC_FRAME_SIZE) {
           if (
-            this._codecParser.isFlushing ||
+            this.codecParser.isFlushing ||
             (yield* getHeader(
-              this._codecParser,
-              this._headerCache,
+              this.codecParser,
+              this.headerCache,
               nextHeaderOffset
             ))
           ) {
             // found a valid next frame header
-            let frameData = yield* this._codecParser.readRawData(
+            let frameData = yield* this.codecParser.readRawData(
               nextHeaderOffset
             );
 
-            if (!this._codecParser.isFlushing)
+            if (!this.codecParser.isFlushing)
               frameData = frameData.subarray(0, nextHeaderOffset);
 
             // check that this is actually the next header by validating the frame footer crc16
@@ -95,9 +95,9 @@ export default class FLACParser extends Parser<FLACFrame> {
               // both frame headers, and frame footer crc16 are valid, we are synced (odds are pretty low of a false positive)
               const frame = new FLACFrame(frameData, header, Uint8Array.from([]));
 
-              this._headerCache.enable(); // start caching when synced
-              this._codecParser.incrementRawData(nextHeaderOffset); // increment to the next frame
-              this._codecParser.mapFrameStats(frame);
+              this.headerCache.enable(); // start caching when synced
+              this.codecParser.incrementRawData(nextHeaderOffset); // increment to the next frame
+              this.codecParser.mapFrameStats(frame);
 
               return frame;
             }
@@ -108,13 +108,13 @@ export default class FLACParser extends Parser<FLACFrame> {
           );
         }
 
-        this._codecParser.logWarning(
+        this.codecParser.logWarning(
           `Unable to sync FLAC frame after searching ${nextHeaderOffset} bytes.`
         );
-        this._codecParser.incrementRawData(nextHeaderOffset);
+        this.codecParser.incrementRawData(nextHeaderOffset);
       } else {
         // not synced, increment data to continue syncing
-        this._codecParser.incrementRawData(
+        this.codecParser.incrementRawData(
           yield* this._getNextFrameSyncOffset(1)
         );
       }
@@ -125,7 +125,7 @@ export default class FLACParser extends Parser<FLACFrame> {
     if (oggPage.pageSequenceNumber === 0) {
       // Identification header
 
-      this._headerCache.enable();
+      this.headerCache.enable();
       this._streamInfo = oggPage.data.subarray(13);
     } else if (oggPage.pageSequenceNumber === 1) {
       // Vorbis comments
@@ -135,14 +135,14 @@ export default class FLACParser extends Parser<FLACFrame> {
         .segments.map<FLACFrame>((segment) => {
           const header = getHeaderFromUint8Array(
             segment,
-            this._headerCache
+            this.headerCache
           );
 
           if (header) {
             return new FLACFrame(segment, header as FLACHeader, this._streamInfo);
           }
 
-          this._codecParser.logWarning(
+          this.codecParser.logWarning(
             "Failed to parse Ogg FLAC frame",
             "Skipping invalid FLAC frame"
           );          

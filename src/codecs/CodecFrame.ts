@@ -55,11 +55,9 @@ export function* getCodecFrame<F extends CodecFrame<any>, H extends Header>(
 }
 
 export class CodecFrame<H extends CodecHeader = CodecHeader> extends Frame<H> {
-  constructor(header: H, data: Uint8Array, samples: number) {
+  constructor(readonly header: H, data: Uint8Array, readonly samples: number) {
     super(header, data, samples);
 
-    this.header = header;
-    this.samples = samples;
     this.duration = (samples / header.sampleRate) * 1000;
     this.frameNumber = 0;
     this.totalBytesOut = 0;
@@ -69,11 +67,7 @@ export class CodecFrame<H extends CodecHeader = CodecHeader> extends Frame<H> {
     frameStore.get(this).length = data.length;
   }
 
-  header: H;
-
   crc32: number = 0;
-
-  samples: number;
 
   duration: number;
 

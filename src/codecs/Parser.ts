@@ -27,12 +27,14 @@ import HeaderCache from "./HeaderCache";
  * @description Abstract class containing methods for parsing codec frames
  */
 export default class Parser<F extends Frame<any>, H = FrameHeaderOf<F>> {  
-  protected _codecParser: CodecParser;
-  protected _headerCache: HeaderCache;
 
-  constructor(codecParser: CodecParser, headerCache: HeaderCache, private getFrame?: GetFrame<F>, private getHeader?: GetHeader<H>) {
-    this._codecParser = codecParser;
-    this._headerCache = headerCache;
+  constructor(
+    protected codecParser: CodecParser, 
+    protected headerCache: HeaderCache, 
+    private getFrame?: GetFrame<F>, 
+    private getHeader?: GetHeader<H>) 
+  {
+
   }
 
   get codec() {
@@ -47,50 +49,45 @@ export default class Parser<F extends Frame<any>, H = FrameHeaderOf<F>> {
     let frame: F | null;
 
     do {
-      frame = yield* this.getFrame!(
-        this._codecParser,
-        this._headerCache,
-        0
-      );
+      frame = yield* this.getFrame!(this.codecParser, this.headerCache, 0);
       
       if (frame) {
         return frame;
       }
       
-      this._codecParser.incrementRawData(1); // increment to continue syncing
+      this.codecParser.incrementRawData(1); // increment to continue syncing
     } while (true);
   }
 
   /**
-   * @description Searches for Frames within bytes containing a sequence of known codec frames.
-   * @param {boolean} ignoreNextFrame Set to true to return frames even if the next frame may not exist at the expected location
-   * @returns {F}
+   * Searches for Frames within bytes containing a sequence of known codec frames.
+   * @param ignoreNextFrame Set to true to return frames even if the next frame may not exist at the expected location
    */
   *fixedLengthFrameSync(ignoreNextFrame?: boolean): Generator<Uint8Array | undefined, F | null> {
     let frame = yield* this.syncFrame();
     const frameLength = frameStore.get(frame).length;
 
-    if (ignoreNextFrame || this._codecParser.isFlushing ||
+    if (ignoreNextFrame || this.codecParser.isFlushing ||
       // check if there is a frame right after this one
       (yield* this.getHeader!(
-        this._codecParser,
-        this._headerCache,
+        this.codecParser,
+        this.headerCache,
         frameLength
       ))
     ) {
-      this._headerCache.enable(); // start caching when synced
+      this.headerCache.enable(); // start caching when synced
 
-      this._codecParser.incrementRawData(frameLength); // increment to the next frame
-      this._codecParser.mapFrameStats(frame);
+      this.codecParser.incrementRawData(frameLength); // increment to the next frame
+      this.codecParser.mapFrameStats(frame);
       return frame;
     }
 
-    this._codecParser.logWarning(
+    this.codecParser.logWarning(
       `Missing frame frame at ${frameLength} bytes from current position.`,
       "Dropping current frame and trying again."
     );
-    this._headerCache.reset(); // frame is invalid and must re-sync and clear cache
-    this._codecParser.incrementRawData(1); // increment to invalidate the current frame
+    this.headerCache.reset(); // frame is invalid and must re-sync and clear cache
+    this.codecParser.incrementRawData(1); // increment to invalidate the current frame
 
     return null;
   }  
