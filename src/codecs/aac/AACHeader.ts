@@ -96,7 +96,7 @@ type RawAACHeader = RawCodecHeader & {
   samples: number;
   numberAACFrames: number;
   frameLength: number;
-  bufferFullness: any; // TODO:
+  bufferFullness: number;
 }
 
 type StaticHeader = Omit<RawAACHeader, 'frameLength' | 'bufferFullness'>;
@@ -221,8 +221,7 @@ export function* getHeader(codecParser: ICodecParser, headerCache: HeaderCache, 
 
   // Byte (6,7 of 7)
   // * `...OOOOO|OOOOOO..`: Buffer fullness
-  const bufferFullnessBits = ((data[5] << 6) | (data[6] >> 2)) & 0x7ff;
-  const bufferFullness = bufferFullnessBits === 0x7ff ? "VBR" : bufferFullnessBits;
+  const bufferFullness = ((data[5] << 6) | (data[6] >> 2)) & 0x7ff;
 
   return new AACHeader({
     ...header,
@@ -281,5 +280,5 @@ export class AACHeader extends CodecHeader {
   readonly copyrightId: boolean;
   readonly copyrightIdStart: boolean;
   readonly numberAACFrames: number;
-  readonly bufferFullness: any;
+  readonly bufferFullness: number;
 }

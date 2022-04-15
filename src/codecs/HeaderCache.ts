@@ -17,7 +17,6 @@
 */
 
 import { OnCodecUpdate } from "../types";
-import { RawCodecHeader } from "./CodecHeader";
 
 export class HeaderCache {
   private isEnabled = false;
@@ -83,7 +82,7 @@ export class HeaderCache {
     return header;
   }
 
-  setHeader(key: string, header: RawCodecHeader, codecUpdateFields: any) {
+  setHeader<H extends object>(key: string, header: H, codecUpdateFields: Partial<H>) {
     if (this.isEnabled) {
       this.updateCurrentHeader(key);
 
