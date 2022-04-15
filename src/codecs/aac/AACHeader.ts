@@ -67,28 +67,28 @@ import {
   lfe,
 } from "../../constants";
 
-import CodecHeader from "../CodecHeader";
+import CodecHeader, { RawCodecHeader } from "../CodecHeader";
 import { CodecParser } from "../../CodecParser";
 import HeaderCache from "../HeaderCache";
 
-const mpegVersion: Record<number, any> = { // TODO: define shape
+const mpegVersion: Record<number, string> = {
   0b00000000: "MPEG-4",
   0b00001000: "MPEG-2",
 };
 
-const layer: Record<number, any> = { // TODO: define shape
+const layer: Record<number, string> = {
   0b00000000: "valid",
   0b00000010: bad,
   0b00000100: bad,
   0b00000110: bad,
 };
 
-const protection: Record<number, any> = { // TODO: define shape
+const protection: Record<number, string> = {
   0b00000000: sixteenBitCRC,
   0b00000001: none,
 };
 
-const profile: Record<number, any> = { // TODO: define shape
+const profile: Record<number, string> = {
   0b00000000: "AAC Main",
   0b01000000: "AAC LC (Low Complexity)",
   0b10000000: "AAC SSR (Scalable Sample Rate)",
@@ -135,8 +135,28 @@ const channelMode: Record<number, any> = { // TODO: define shape
   0b111000000: { channels: 8, description: getChannelMapping(8,channelMappings[1][3],channelMappings[2][0],channelMappings[3][0],lfe), },
 };
 
-export function *getHeader(codecParser: CodecParser, headerCache: HeaderCache, readOffset: number) {
-  const header = {};
+type RawAACHeader = RawCodecHeader & {
+  mpegVersion: string;
+  layer: string;
+  protection: string;
+  length: number;
+  profileBits: number;
+  sampleRateBits: number;
+  profile: string;
+  isPrivate: boolean;
+  channelModeBits: number;
+  isOriginal: boolean;
+  isHome: boolean;
+  copyrightId: boolean;
+  copyrightIdStart: boolean;
+  samples: number;
+  numberAACFrames: number;
+  frameLength: number;
+  bufferFullness: any;
+}
+
+export function *getHeader(codecParser: CodecParser, headerCache: HeaderCache, readOffset: number): Generator<Uint8Array | undefined, AACHeader | null, Uint8Array> {
+  const header = {} as RawAACHeader;
 
   // Must be at least seven bytes. Out of data
   const data = yield* codecParser.readRawData(7, readOffset);
@@ -180,7 +200,7 @@ export function *getHeader(codecParser: CodecParser, headerCache: HeaderCache, r
     header.profile = profile[header.profileBits];
 
     header.sampleRate = sampleRates[header.sampleRateBits];
-    if (header.sampleRate === reserved) return null;
+    if ((header.sampleRate as any) === reserved) return null;
 
     header.isPrivate = Boolean(privateBit);
 
@@ -231,8 +251,7 @@ export function *getHeader(codecParser: CodecParser, headerCache: HeaderCache, r
   // Byte (6,7 of 7)
   // * `...OOOOO|OOOOOO..`: Buffer fullness
   const bufferFullnessBits = ((data[5] << 6) | (data[6] >> 2)) & 0x7ff;
-  header.bufferFullness =
-    bufferFullnessBits === 0x7ff ? "VBR" : bufferFullnessBits;
+  header.bufferFullness = bufferFullnessBits === 0x7ff ? "VBR" : bufferFullnessBits;
 
   return new AACHeader(header);
 }
@@ -242,7 +261,7 @@ export default class AACHeader extends CodecHeader {
    * @private
    * Call AACHeader.getHeader(Array<Uint8>) to get instance
    */
-  constructor(header) {
+  constructor(header: RawAACHeader) {
     super(header);
 
     this.copyrightId = header.copyrightId;
@@ -279,4 +298,22 @@ export default class AACHeader extends CodecHeader {
     new DataView(bytes.buffer).setUint16(0, audioSpecificConfig, false);
     return bytes;
   }
+
+  mpegVersion: string;
+  layer: string;
+  protection: string;
+  length: number;
+  // profileBits: number;
+  // sampleRateBits: number;
+  profile: string;
+  isPrivate: boolean;
+  // channelModeBits: number;
+  isOriginal: boolean;
+  isHome: boolean;
+  copyrightId: boolean;
+  copyrightIdStart: boolean;
+  // samples: number;
+  numberAACFrames: number;
+  // frameLength: number;
+  bufferFullness: any;
 }

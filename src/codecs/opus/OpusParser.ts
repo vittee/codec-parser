@@ -21,9 +21,9 @@ import { frameStore } from "../../globals";
 import HeaderCache from "../HeaderCache";
 import Parser from "../Parser";
 import OpusFrame from "./OpusFrame";
-import OpusHeader from "./OpusHeader";
+import OpusHeader, { getHeaderFromUint8Array } from "./OpusHeader";
 
-export default class OpusParser extends Parser {
+export default class OpusParser extends Parser<OpusFrame> {
   constructor(codecParser: CodecParser, headerCache: HeaderCache) {
     super(codecParser, headerCache);
 
@@ -47,7 +47,7 @@ export default class OpusParser extends Parser {
       // OpusTags
     } else {
       oggPage.codecFrames = frameStore.get(oggPage).segments.map((segment) => {
-        const header = OpusHeader.getHeaderFromUint8Array( // TODO: Use function
+        const header = getHeaderFromUint8Array( // TODO: Use function
           this._identificationHeader,
           segment,
           this._headerCache

@@ -32,7 +32,5 @@ export function *getFrame(codecParser: CodecParser, headerCache: HeaderCache, re
 }
 
 export default class AACFrame extends CodecFrame<AACHeader> {
-  constructor(header: AACHeader, frame: Uint8Array, samples: number) {
-    super(header, frame, samples);
-  }
+
 }

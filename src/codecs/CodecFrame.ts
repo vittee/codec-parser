@@ -21,11 +21,18 @@ import Frame, { Header } from "../containers/Frame";
 import CodecHeader from "./CodecHeader";
 import { CodecParser } from "../CodecParser";
 import HeaderCache from "./HeaderCache";
-import { GetHeader } from "./Parser";
+import { GetHeader } from "../types";
 
-export type FrameFactory<F extends Frame, H extends CodecHeader> = new (header: H, data: Uint8Array, samples: number) => F;
+export type FrameFactory<F extends Frame<any>, H extends Header> = new (header: H, data: Uint8Array, samples: number) => F;
 
-export function *getCodecFrame(getHeader: GetHeader, frameFactory: FrameFactory<any, any>, codecParser: CodecParser, headerCache: HeaderCache, readOffset: number): Generator {
+export function* getCodecFrame<F extends CodecFrame<any>, H extends Header>(
+  getHeader: GetHeader<H>,
+  frameFactory: FrameFactory<F, H>,
+  codecParser: CodecParser,
+  headerCache: HeaderCache,
+  readOffset: number)
+  : Generator<Uint8Array | undefined, F | null, Uint8Array> {
+
   const header = yield* getHeader(
     codecParser,
     headerCache,

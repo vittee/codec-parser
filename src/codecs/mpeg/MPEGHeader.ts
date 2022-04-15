@@ -36,7 +36,7 @@ import {
 } from "../../constants";
 import { bytesToString } from "../../utilities";
 
-import ID3v2 from "../../metadata/ID3v2";
+import { getID3v2Header } from "../../metadata/ID3v2";
 import CodecHeader, { RawCodecHeader } from "../CodecHeader";
 import { CodecParser } from "../../CodecParser";
 import HeaderCache from "../HeaderCache";
@@ -98,15 +98,30 @@ const intensityStereo = "Intensity stereo ";
 const msStereo = ", MS stereo ";
 const on = "on";
 const off = "off";
-const layer3ModeExtensions = {
+
+const layer3ModeExtensions: Record<number, string> = {
   0b00000000: intensityStereo + off + msStereo + off,
   0b00010000: intensityStereo + on + msStereo + off,
   0b00100000: intensityStereo + off + msStereo + on,
   0b00110000: intensityStereo + on + msStereo + on,
 };
 
-const layer = "Layer ";
-const layers: Record<number, any> = { // TODO: Define shape
+type Layer = {
+  description: string;
+  framePadding?: number;
+  modeExtensions?: Record<number, string>;
+  samples?: number;
+  v1?: {
+    bitrateIndex: number;
+    samples?: number;
+  },
+  v2?: {
+    bitrateIndex: number;
+    samples?: number;
+  }
+}
+
+const layers: Record<number, Layer> = { // TODO: Define shape
   0b00000000: { description: reserved },
   0b00000010: {
     description: "Layer III",
@@ -151,7 +166,16 @@ const mpegVersion = "MPEG Version ";
 const isoIec = "ISO/IEC ";
 const v2 = "v2";
 const v1 = "v1";
-const mpegVersions: Record<number, any> = { // TODO: define shape
+
+type Version = 'v1' | 'v2';
+
+type MpegVersion = {
+  description: string;
+  layers?: Version;
+  sampleRates?: Record<number, number | 'reserved'> // FIXME:
+}
+
+const mpegVersions: Record<number, MpegVersion> = {
   0b00000000: {
     description: `${mpegVersion}2.5 (later extension of MPEG 2)`,
     layers: v2,
@@ -185,12 +209,12 @@ const mpegVersions: Record<number, any> = { // TODO: define shape
   },
 };
 
-const protection: Record<number, any> = { // TODO: define shape
+const protection: Record<number, string> = {
   0b00000000: sixteenBitCRC,
   0b00000001: none,
 };
 
-const emphasis: Record<number, any> = { // TODO: define shape
+const emphasis: Record<number, string> = { 
   0b00000000: none,
   0b00000001: "50/15 ms",
   0b00000010: reserved,
@@ -205,14 +229,25 @@ const channelModes: Record<number, any> = { // TODO: define shape
 };
 
 type RawMPEGHeader = RawCodecHeader & {
-
+  mpegVersion: string;
+  layer: string;
+  samples: number;
+  protection: string;
+  length: number;
+  framePadding: number;
+  isPrivate: boolean;
+  frameLength: number;
+  modeExtension: string;
+  isCopyrighted: boolean;
+  isOriginal: boolean;
+  emphasis: string;
 }
 
-export function *getHeader(codecParser: CodecParser, headerCache: HeaderCache, readOffset: number) {
+export function *getHeader(codecParser: CodecParser, headerCache: HeaderCache, readOffset: number): Generator<Uint8Array | undefined, MPEGHeader | null, Uint8Array> {
   const header = {} as RawMPEGHeader;
 
   // check for id3 header
-  const id3v2Header = yield* ID3v2.getID3v2Header(
+  const id3v2Header = yield* getID3v2Header(
     codecParser,
     headerCache,
     readOffset
@@ -248,14 +283,14 @@ export function *getHeader(codecParser: CodecParser, headerCache: HeaderCache, r
   // Layer (I, II, III)
   const layerBits = data[1] & 0b00000110;
   if (layers[layerBits].description === reserved) return null;
-  const layer = {
+  const layer: Layer & Partial<Layer['v1']> = {
     ...layers[layerBits],
-    ...layers[layerBits][mpegVersion.layers],
+    ...layers[layerBits][mpegVersion.layers!],
   };
 
   header.mpegVersion = mpegVersion.description;
   header.layer = layer.description;
-  header.samples = layer.samples;
+  header.samples = layer.samples ?? 0;
   header.protection = protection[data[1] & 0b00000001];
 
   header.length = 4;
@@ -266,13 +301,13 @@ export function *getHeader(codecParser: CodecParser, headerCache: HeaderCache, r
   // * `....FF..`: Sample rate
   // * `......G.`: Padding bit, 0=frame not padded, 1=frame padded
   // * `.......H`: Private bit.
-  header.bitrate = bitrateMatrix[data[2] & 0b11110000][layer.bitrateIndex];
-  if (header.bitrate === bad) return null;
+  header.bitrate = bitrateMatrix[data[2] & 0b11110000][layer.bitrateIndex ?? 0];
+  if (header.bitrate as any === bad) return null;
 
-  header.sampleRate = mpegVersion.sampleRates[data[2] & 0b00001100];
-  if (header.sampleRate === reserved) return null;
+  header.sampleRate = mpegVersion.sampleRates![data[2] & 0b00001100] as number;
+  if (header.sampleRate as any === reserved) return null;
 
-  header.framePadding = data[2] & 0b00000010 && layer.framePadding;
+  header.framePadding = data[2] & 0b00000010 && (layer.framePadding ?? 0);
   header.isPrivate = Boolean(data[2] & 0b00000001);
 
   header.frameLength = Math.floor(
@@ -292,7 +327,7 @@ export function *getHeader(codecParser: CodecParser, headerCache: HeaderCache, r
   header.channelMode = channelModes[channelModeBits].description;
   header.channels = channelModes[channelModeBits].channels;
 
-  header.modeExtension = layer.modeExtensions[data[3] & 0b00110000];
+  header.modeExtension = layer.modeExtensions![data[3] & 0b00110000];
   header.isCopyrighted = Boolean(data[3] & 0b00001000);
   header.isOriginal = Boolean(data[3] & 0b00000100);
 
@@ -310,7 +345,6 @@ export function *getHeader(codecParser: CodecParser, headerCache: HeaderCache, r
 
 export default class MPEGHeader extends CodecHeader {
   /**
-   * @private
    * Call MPEGHeader.getHeader(Array<Uint8>) to get instance
    */
   constructor(header: RawMPEGHeader) {
@@ -327,4 +361,17 @@ export default class MPEGHeader extends CodecHeader {
     this.mpegVersion = header.mpegVersion;
     this.protection = header.protection;
   }
+
+  mpegVersion: string;
+  layer: string;
+  samples?: number;
+  protection: string;
+  length?: number;
+  framePadding: number;
+  isPrivate: boolean;
+  frameLength?: number;
+  modeExtension: string;
+  isCopyrighted: boolean;
+  isOriginal: boolean;
+  emphasis: string;
 }

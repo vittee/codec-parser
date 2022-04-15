@@ -49,11 +49,28 @@ L   n   Segment table (n=page_segments+26).
         
 */
 
-import CodecHeader from "../../codecs/CodecHeader";
+import { CodecParser } from "../../CodecParser";
+import CodecHeader, { RawCodecHeader } from "../../codecs/CodecHeader";
+import HeaderCache from "../../codecs/HeaderCache";
 import { headerStore } from "../../globals";
 
-export function *getHeader(codecParser, headerCache, readOffset) {
-  const header = {};
+export type RawOggPageHeader = RawCodecHeader & {
+  streamStructureVersion: number;
+  isLastPage: boolean;
+  isFirstPage: boolean;
+  isContinuedPacket: boolean;
+  absoluteGranulePosition: bigint;
+  streamSerialNumber: number;
+  pageSequenceNumber: number;
+  pageChecksum: number;
+  length: number;
+  frameLength: number;
+  pageSegmentTable: number[];
+  pageSegmentBytes: Uint8Array;
+}
+
+export function *getHeader(codecParser: CodecParser, _headerCache: HeaderCache, readOffset: number) {
+  const header = {} as RawOggPageHeader;
 
   // Must be at least 28 bytes.
   let data = yield* codecParser.readRawData(28, readOffset);
@@ -145,7 +162,7 @@ export default class OggPageHeader extends CodecHeader {
    * @private
    * Call OggPageHeader.getHeader(Array<Uint8>) to get instance
    */
-  constructor(header) {
+  constructor(header: RawOggPageHeader) {
     super(header);
 
     headerStore.set(this, header);
@@ -159,4 +176,13 @@ export default class OggPageHeader extends CodecHeader {
     this.pageChecksum = header.pageChecksum;
     this.streamSerialNumber = header.streamSerialNumber;
   }
+
+  absoluteGranulePosition: bigint;
+  isContinuedPacket: boolean;
+  isFirstPage: boolean;
+  isLastPage: boolean;
+  pageSequenceNumber: number;
+  streamSerialNumber: number;
+  pageSegmentTable: number[];
+  pageChecksum: number;  
 }

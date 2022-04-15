@@ -21,9 +21,9 @@ import { CodecFrame } from "../../codecs/CodecFrame";
 import HeaderCache from "../../codecs/HeaderCache";
 import { headerStore, frameStore } from "../../globals";
 import Frame from "../Frame";
-import { getHeader } from "./OggPageHeader";
+import OggPageHeader, { getHeader } from "./OggPageHeader";
 
-export function *getFrame(codecParser: CodecParser, headerCache: HeaderCache, readOffset: number): Generator {
+export function *getFrame(codecParser: CodecParser, headerCache: HeaderCache, readOffset: number) {
   const header = yield* getHeader(
     codecParser,
     headerCache,
@@ -48,21 +48,21 @@ export function *getFrame(codecParser: CodecParser, headerCache: HeaderCache, re
   }
 }
 
-export default class OggPage extends Frame {
+export default class OggPage extends Frame<OggPageHeader> {
   codecFrames: CodecFrame<any>[];
-  rawData: any;
-  absoluteGranulePosition: any;
-  crc32: any;
+  rawData: Uint8Array;
+  absoluteGranulePosition: bigint;
+  crc32: number;
   duration: number;
-  isContinuedPacket: any;
-  isFirstPage: any;
-  isLastPage: any;
-  pageSequenceNumber: any;
+  isContinuedPacket: boolean;
+  isFirstPage: boolean;
+  isLastPage: boolean;
+  pageSequenceNumber: number;
   samples: number;
-  streamSerialNumber: any;
+  streamSerialNumber: number;
 
-  constructor(header, frame, rawData) {
-    super(header, frame);
+  constructor(header: OggPageHeader, frame: Uint8Array, rawData: Uint8Array) {
+    super(header, frame, 0);
 
     frameStore.get(this).length = rawData.length;
 

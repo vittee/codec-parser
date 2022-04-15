@@ -1,4 +1,4 @@
-export const reserved = "reserved";
+export const reserved = "reserved"; // FIXME:
 export const bad = "bad";
 export const free = "free";
 export const none = "none";

@@ -17,13 +17,14 @@
 */
 
 import { CodecParser } from "../../CodecParser";
+import { OnCodec } from "../../types";
 import HeaderCache from "../HeaderCache";
 import Parser from "../Parser";
-import { getFrame } from "./MPEGFrame";
+import MPEGFrame, { getFrame } from "./MPEGFrame";
 import { getHeader } from "./MPEGHeader";
 
-export default class MPEGParser extends Parser {
-  constructor(codecParser: CodecParser, headerCache: HeaderCache, onCodec) {
+export default class MPEGParser extends Parser<MPEGFrame> {
+  constructor(codecParser: CodecParser, headerCache: HeaderCache, onCodec: OnCodec) {
     super(codecParser, headerCache, getFrame, getHeader);
 
     onCodec(this.codec);

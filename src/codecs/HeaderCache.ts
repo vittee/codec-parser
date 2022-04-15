@@ -17,9 +17,10 @@
 */
 
 import { OnCodecUpdate } from "../types";
+import { RawCodecHeader } from "./CodecHeader";
 
 export default class HeaderCache {
-  _onCodecUpdate: any;
+  _onCodecUpdate?: OnCodecUpdate;
   _isEnabled = false;
   _headerCache!: Map<any, any>;
   _codecUpdateData!: WeakMap<object, any>;
@@ -27,7 +28,7 @@ export default class HeaderCache {
   _currentHeader!: string;
   _bitrate = 0;
 
-  constructor(onCodecUpdate: OnCodecUpdate) {
+  constructor(onCodecUpdate?: OnCodecUpdate) {
     this._onCodecUpdate = onCodecUpdate;
     this.reset();
   }
@@ -84,7 +85,7 @@ export default class HeaderCache {
     return header;
   }
 
-  setHeader(key: string, header, codecUpdateFields) {
+  setHeader(key: string, header: RawCodecHeader, codecUpdateFields) {
     if (this._isEnabled) {
       this.updateCurrentHeader(key);
 

@@ -17,13 +17,14 @@
 */
 
 import { CodecParser } from "../../CodecParser";
+import { OnCodec } from "../../types";
 import HeaderCache from "../HeaderCache";
 import Parser from "../Parser";
 import AACFrame, { getFrame } from "./AACFrame";
-import AACHeader, { getHeader } from "./AACHeader";
+import { getHeader } from "./AACHeader";
 
 export default class AACParser extends Parser<AACFrame> {
-  constructor(codecParser: CodecParser, headerCache: HeaderCache, onCodec) {
+  constructor(codecParser: CodecParser, headerCache: HeaderCache, onCodec: OnCodec) {
     super(codecParser, headerCache, getFrame, getHeader);
 
     onCodec(this.codec);

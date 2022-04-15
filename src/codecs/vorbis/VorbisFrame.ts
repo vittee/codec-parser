@@ -20,7 +20,5 @@ import { CodecFrame } from "../CodecFrame";
 import VorbisHeader from "./VorbisHeader";
 
 export default class VorbisFrame extends CodecFrame<VorbisHeader> {
-  constructor(data, header, samples) {
-    super(header, data, samples);
-  }
+
 }

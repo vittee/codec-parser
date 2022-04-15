@@ -20,9 +20,9 @@ import { frameStore } from "../../globals";
 import { BitReader, reverse } from "../../utilities";
 import Parser from "../Parser";
 import VorbisFrame from "./VorbisFrame";
-import VorbisHeader from "./VorbisHeader";
+import VorbisHeader, { getHeaderFromUint8Array } from "./VorbisHeader";
 
-export default class VorbisParser extends Parser {
+export default class VorbisParser extends Parser<VorbisFrame> {
   constructor(codecParser, headerCache) {
     super(codecParser, headerCache);
 
@@ -40,7 +40,7 @@ export default class VorbisParser extends Parser {
   }
 
   parseOggPage(oggPage) {
-    const oggPageSegments = frameStore.get(oggPage).segments;
+    const oggPageSegments = frameStore.get(oggPage).segments as Uint8Array[];
 
     if (oggPage.pageSequenceNumber === 0) {
       // Identification header
@@ -57,7 +57,7 @@ export default class VorbisParser extends Parser {
       }
     } else {
       oggPage.codecFrames = oggPageSegments.map((segment) => {
-        const header = VorbisHeader.getHeaderFromUint8Array( // TODO: Use function
+        const header = getHeaderFromUint8Array( // TODO: Use function
           this._identificationHeader,
           this._headerCache
         );
@@ -66,9 +66,9 @@ export default class VorbisParser extends Parser {
           header.vorbisComments = this._vorbisComments;
           header.vorbisSetup = this._vorbisSetup;
 
-          return new VorbisFrame(
-            segment,
+          return new VorbisFrame(            
             header,
+            segment,
             this._getSamples(segment, header)
           );
         }
@@ -138,7 +138,7 @@ export default class VorbisParser extends Parser {
    *
    * liboggz and ffmpeg both use this method.
    */
-  _parseSetupHeader(setup) {
+  _parseSetupHeader(setup: Uint8Array) {
     const bitReader = new BitReader(setup);
     const failedToParseVorbisStream = "Failed to read Vorbis stream";
     const failedToParseVorbisModes = ", failed to parse vorbis modes";

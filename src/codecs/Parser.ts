@@ -17,24 +17,20 @@
 */
 
 import { CodecParser } from "../CodecParser";
-import Frame, { Header } from "../containers/Frame";
+import Frame from "../containers/Frame";
 import { frameStore } from "../globals";
+import { FrameHeaderOf, GetFrame, GetHeader } from "../types";
 import HeaderCache from "./HeaderCache";
-
-export type GetHeader = (codecParser: CodecParser, headerCache: HeaderCache, readOffset: number) => Generator;
-export type GetFrame = (codecParcer: CodecParser, headerCache: HeaderCache, readOffset: number) => Generator;
-
-type FrameHeaderOf<F extends Frame<any>> = F extends Frame<infer H> ? H extends Header ? H : never : never;
 
 /**
  * @abstract
  * @description Abstract class containing methods for parsing codec frames
  */
 export default class Parser<F extends Frame<any>, H = FrameHeaderOf<F>> {  
-  private _codecParser: CodecParser;
-  private _headerCache: HeaderCache;
+  protected _codecParser: CodecParser;
+  protected _headerCache: HeaderCache;
 
-  constructor(codecParser: CodecParser, headerCache: HeaderCache, private getFrame?: GetFrame, private getHeader?: GetHeader) {
+  constructor(codecParser: CodecParser, headerCache: HeaderCache, private getFrame?: GetFrame<F>, private getHeader?: GetHeader<H>) {
     this._codecParser = codecParser;
     this._headerCache = headerCache;
   }
@@ -43,15 +39,15 @@ export default class Parser<F extends Frame<any>, H = FrameHeaderOf<F>> {
     return "";
   }
 
-  *parseFrame(): Generator<F | null, F | null> {
+  *parseFrame(): Generator<Uint8Array | undefined, F | null> {
     return null;
   }
 
   *syncFrame() {
-    let frame: F;
+    let frame: F | null;
 
     do {
-      frame = yield* this.getFrame(
+      frame = yield* this.getFrame!(
         this._codecParser,
         this._headerCache,
         0
@@ -70,13 +66,13 @@ export default class Parser<F extends Frame<any>, H = FrameHeaderOf<F>> {
    * @param {boolean} ignoreNextFrame Set to true to return frames even if the next frame may not exist at the expected location
    * @returns {F}
    */
-  *fixedLengthFrameSync(ignoreNextFrame: boolean): Generator<F, unknown, F> {
+  *fixedLengthFrameSync(ignoreNextFrame?: boolean): Generator<Uint8Array | undefined, F | null> {
     let frame = yield* this.syncFrame();
     const frameLength = frameStore.get(frame).length;
 
     if (ignoreNextFrame || this._codecParser.isFlushing ||
       // check if there is a frame right after this one
-      (yield* this.getHeader(
+      (yield* this.getHeader!(
         this._codecParser,
         this._headerCache,
         frameLength
@@ -95,5 +91,7 @@ export default class Parser<F extends Frame<any>, H = FrameHeaderOf<F>> {
     );
     this._headerCache.reset(); // frame is invalid and must re-sync and clear cache
     this._codecParser.incrementRawData(1); // increment to invalidate the current frame
-  }
+
+    return null;
+  }  
 }

@@ -17,17 +17,20 @@
 */
 
 import { CodecParser } from "../../CodecParser";
+import OggPage from "../../containers/ogg/OggPage";
 import { frameStore, headerStore } from "../../globals";
+import { OnCodec } from "../../types";
 import HeaderCache from "../HeaderCache";
 import Parser from "../Parser";
-import FLACFrame from "./FLACFrame";
-import FLACHeader, { getHeader } from "./FLACHeader";
+import FLACFrame, { checkFrameFooterCrc16 } from "./FLACFrame";
+import { getHeader, getHeaderFromUint8Array, RawFLACHeader } from "./FLACHeader";
 
 const MIN_FLAC_FRAME_SIZE = 2;
 const MAX_FLAC_FRAME_SIZE = 512 * 1024;
 
-export default class FLACParser extends Parser {
-  constructor(codecParser: CodecParser, headerCache: HeaderCache, onCodec) {
+export default class FLACParser extends Parser<FLACFrame> {
+  _streamInfo: Uint8Array;
+  constructor(codecParser: CodecParser, headerCache: HeaderCache, _onCodec: OnCodec) {
     super(codecParser, headerCache);
   }
 
@@ -35,7 +38,7 @@ export default class FLACParser extends Parser {
     return "flac";
   }
 
-  *_getNextFrameSyncOffset(offset) {
+  *_getNextFrameSyncOffset(offset: number) {
     const data = yield* this._codecParser.readRawData(2, 0);
     const dataLength = data.length - 2;
 
@@ -87,7 +90,7 @@ export default class FLACParser extends Parser {
               frameData = frameData.subarray(0, nextHeaderOffset);
 
             // check that this is actually the next header by validating the frame footer crc16
-            if (FLACFrame.checkFrameFooterCrc16(frameData)) {
+            if (checkFrameFooterCrc16(frameData)) {
               // both frame headers, and frame footer crc16 are valid, we are synced (odds are pretty low of a false positive)
               const frame = new FLACFrame(frameData, header);
 
@@ -117,7 +120,7 @@ export default class FLACParser extends Parser {
     } while (true);
   }
 
-  parseOggPage(oggPage) {
+  parseOggPage(oggPage: OggPage) {
     if (oggPage.pageSequenceNumber === 0) {
       // Identification header
 
@@ -126,10 +129,9 @@ export default class FLACParser extends Parser {
     } else if (oggPage.pageSequenceNumber === 1) {
       // Vorbis comments
     } else {
-      oggPage.codecFrames = frameStore
-        .get(oggPage)
+      oggPage.codecFrames = (frameStore.get(oggPage) as RawFLACHeader)
         .segments.map((segment) => {
-          const header = FLACHeader.getHeaderFromUint8Array( // TODO: Use function
+          const header = getHeaderFromUint8Array(
             segment,
             this._headerCache
           );

@@ -23,35 +23,36 @@ import AACParser from "./codecs/aac/AACParser";
 import FLACParser from "./codecs/flac/FLACParser";
 import OggParser from "./containers/ogg/OggParser";
 import Parser from "./codecs/Parser";
-import { OnCodecUpdate } from "./types";
+import { OnCodec, OnCodecUpdate } from "./types";
 import OggPage from "./containers/ogg/OggPage";
 import { CodecFrame } from "./codecs/CodecFrame";
+import Frame, { Header } from "./containers/Frame";
 
 const noOp = () => {};
 
 export type SupportedMimeTypes = 'audio/mpeg' | 'audio/aac' | 'audio/aacp' | 'audio/flac' | 'audio/ogg' | 'application/ogg';
 
 export type CodecParserOptions = {
-  onCodec?: any; // TODO:
-  onCodecUpdate?: any;
+  onCodec?: OnCodec;
+  onCodecUpdate?: OnCodecUpdate;
   enableLogging?: boolean;
 }
 
 export class CodecParser {
   private _flushing = false;
 
-  private _generator: ReturnType<typeof this._getGenerator>;
+  private _generator: ReturnType<typeof this.makeGenterator>;
   private _totalBytesIn: number = 0;
-  private _onCodecUpdate: OnCodecUpdate;
+  private _onCodecUpdate?: OnCodecUpdate;
   private _enableLogging: boolean | undefined;
-  private _onCodec: any;
+  private _onCodec: OnCodec;
   private _frameNumber: number = 0;
   private _currentReadPosition: number = 0;
   private _totalSamples: number = 0;
   private _totalBytesOut: number = 0;
   private _sampleRate: number = 0;
 
-  private _parser!: Parser<any, any>;
+  private _parser!: Parser<Frame<Header>, Header>;
 
   private _rawData!: Uint8Array;
 
@@ -63,7 +64,7 @@ export class CodecParser {
     this._onCodecUpdate = options.onCodecUpdate;
     this._enableLogging = options.enableLogging;
 
-    this._generator = this._getGenerator();
+    this._generator = this.makeGenterator();
     this._generator.next();
   }
 
@@ -94,7 +95,7 @@ export class CodecParser {
 
     this._flushing = false;
 
-    this._generator = this._getGenerator();
+    this._generator = this.makeGenterator();
     this._generator.next();
   }
 
@@ -105,7 +106,7 @@ export class CodecParser {
    * @returns {Iterable<CodecFrame|OggPage>} Iterator that operates over the codec data.
    * @yields {CodecFrame|OggPage} Parsed codec or ogg page data
    */
-  *parseChunk(chunk: Uint8Array): Iterable<CodecFrame<any> | OggPage> {
+  *parseChunk(chunk: Uint8Array): Generator<Frame<any>> {
     // This will end up being the rawData in Parser's parseFrame
     for (let it = this._generator.next(chunk); it.value; it = this._generator.next()) {
       yield it.value;
@@ -113,19 +114,13 @@ export class CodecParser {
   }
 
   /**
-   * @public
-   * @description Parses an entire file and returns all of the contained frames.
-   * @param {Uint8Array} fileData Coded data to read
-   * @returns {Array<CodecFrame|OggPage>} CodecFrames
+   * Parses an entire file and returns all of the contained frames.
    */
   parseAll(fileData: Uint8Array) {
     return [...this.parseChunk(fileData), ...this.flush()];
   }
 
-  /**
-   * @private
-   */
-  *_getGenerator(): Generator<CodecFrame | OggPage, any> {
+  private *makeGenterator(): Generator<Frame<any> | Uint8Array | undefined> {
     this._headerCache = new HeaderCache(this._onCodecUpdate);
 
     if (this._inputMimeType.match(/aac/)) {
@@ -164,9 +159,9 @@ export class CodecParser {
    * @param {number} minSize Minimum bytes to have present in buffer
    * @returns {Uint8Array} rawData
    */
-  *readRawData(minSize: number = 0, readOffset: number = 0): Generator {
+  *readRawData(minSize: number = 0, readOffset: number = 0): Generator<Uint8Array | undefined, Uint8Array, Uint8Array> {
     while (this._rawData.length <= minSize + readOffset) {
-      const newData = yield; // Externally consume
+      const newData = yield; // Externally consumed
 
       if (this._flushing) {
         return this._rawData.subarray(readOffset);
@@ -215,7 +210,7 @@ export class CodecParser {
   /**
    * @protected
    */
-  mapFrameStats(frame: CodecFrame | OggPage) {
+  mapFrameStats(frame: Frame<any>) {
     if (frame instanceof OggPage) {
       // Ogg container
       frame.codecFrames.forEach((codecFrame) => {
@@ -230,7 +225,7 @@ export class CodecParser {
       return;
     }
     
-    this.mapCodecFrameStats(frame);    
+    this.mapCodecFrameStats(frame as CodecFrame);    
   }
 
   /**

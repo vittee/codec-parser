@@ -69,16 +69,17 @@ import {
   lfe,
 } from "../../constants";
 import { bytesToString, crc8 } from "../../utilities";
-import CodecHeader from "../CodecHeader";
+import CodecHeader, { RawCodecHeader } from "../CodecHeader";
+import HeaderCache from "../HeaderCache";
 
 const getFromStreamInfo = "get from STREAMINFO metadata block";
 
-const blockingStrategy = {
+const blockingStrategy: Record<number, string> = {
   0b00000000: "Fixed",
   0b00000001: "Variable",
 };
 
-const blockSize = {
+const blockSize: Record<number, any> = {
   0b00000000: reserved,
   0b00010000: 192,
   // 0b00100000: 576,
@@ -96,11 +97,10 @@ const blockSize = {
   // 0b11100000: 16384,
   // 0b11110000: 32768,
 };
-for (let i = 2; i < 16; i++)
-  blockSize[i << 4] = i < 6 ? 576 * 2 ** (i - 2) : 2 ** i;
+for (let i = 2; i < 16; i++) blockSize[i << 4] = i < 6 ? 576 * 2 ** (i - 2) : 2 ** i;
 
-const sampleRate = {
-  0b00000000: getFromStreamInfo,
+const sampleRate: Record<number, number> = {
+  0b00000000: getFromStreamInfo as unknown as number,
   0b00000001: rate88200,
   0b00000010: rate176400,
   0b00000011: rate192000,
@@ -119,7 +119,7 @@ const sampleRate = {
 };
 
 /* prettier-ignore */
-const channelAssignments = {
+const channelAssignments: Record<number, any> = { // TODO: Shape
   /*'
   'monophonic (mono)'
   'stereo (left, right)'
@@ -148,18 +148,31 @@ const channelAssignments = {
   0b11110000: reserved,
 }
 
-const bitDepth = {
-  0b00000000: getFromStreamInfo,
+const bitDepth: Record<number, number> = {
+  0b00000000: getFromStreamInfo as unknown as number,
   0b00000010: 8,
   0b00000100: 12,
-  0b00000110: reserved,
+  0b00000110: reserved as unknown as number,
   0b00001000: 16,
   0b00001010: 20,
   0b00001100: 24,
-  0b00001110: reserved,
+  0b00001110: reserved as unknown as number,
 };
 
-export function *getHeader(codecParser: CodecParser, headerCache, readOffset) {
+export type RawFLACHeader = RawCodecHeader & {
+  blockingStrategyBits: number;
+  blockingStrategy: string;
+  blockSizeBits: number;
+  sampleRateBits: number;
+  blockSize: number;
+  length: number;
+  sampleNumber: number;
+  frameNumber: number;
+  samples: number;
+  crc: number;
+}
+
+export function *getHeader(codecParser: CodecParser, headerCache: HeaderCache, readOffset: number) {
   // Must be at least 6 bytes.
   let data = yield* codecParser.readRawData(6, readOffset);
 
@@ -170,7 +183,7 @@ export function *getHeader(codecParser: CodecParser, headerCache, readOffset) {
     return null;
   }
 
-  const header = {};
+  const header = {} as RawFLACHeader;
 
   // Check header cache
   const key = bytesToString(data.subarray(0, 4));
@@ -189,12 +202,12 @@ export function *getHeader(codecParser: CodecParser, headerCache, readOffset) {
     header.sampleRateBits = data[2] & 0b00001111;
 
     header.blockSize = blockSize[header.blockSizeBits];
-    if (header.blockSize === reserved) {
+    if (header.blockSize as any === reserved) {
       return null;
     }
 
     header.sampleRate = sampleRate[header.sampleRateBits];
-    if (header.sampleRate === bad) {
+    if (header.sampleRate as any === bad) {
       return null;
     }
 
@@ -215,7 +228,7 @@ export function *getHeader(codecParser: CodecParser, headerCache, readOffset) {
     header.channelMode = channelAssignment.description;
 
     header.bitDepth = bitDepth[data[3] & 0b00001110];
-    if (header.bitDepth === reserved) {
+    if (header.bitDepth as any === reserved) {
       return null;
     }
   } else {
@@ -229,7 +242,7 @@ export function *getHeader(codecParser: CodecParser, headerCache, readOffset) {
   // check if there is enough data to parse UTF8
   data = yield* codecParser.readRawData(header.length + 8, readOffset);
 
-  const decodedUtf8 = FLACHeader.decodeUTF8Int(data.subarray(4));
+  const decodedUtf8 = decodeUTF8Int(data.subarray(4));
   if (!decodedUtf8) {
     return null;
   }
@@ -316,75 +329,76 @@ export function *getHeader(codecParser: CodecParser, headerCache, readOffset) {
   return new FLACHeader(header);
 }
 
+// https://datatracker.ietf.org/doc/html/rfc3629#section-3
+//    Char. number range  |        UTF-8 octet sequence
+//    (hexadecimal)    |              (binary)
+// --------------------+---------------------------------------------
+// 0000 0000-0000 007F | 0xxxxxxx
+// 0000 0080-0000 07FF | 110xxxxx 10xxxxxx
+// 0000 0800-0000 FFFF | 1110xxxx 10xxxxxx 10xxxxxx
+// 0001 0000-0010 FFFF | 11110xxx 10xxxxxx 10xxxxxx 10xxxxxx
+function decodeUTF8Int(data: Uint8Array) {
+  if (data[0] > 0xfe) {
+    return null; // length byte must have at least one zero as the lsb
+  }
+
+  if (data[0] < 0x80) return { value: data[0], length: 1 };
+
+  // get length by counting the number of msb that are set to 1
+  let length = 1;
+  for (let zeroMask = 0x40; zeroMask & data[0]; zeroMask >>= 1) length++;
+
+  let idx = length - 1,
+    value = 0,
+    shift = 0;
+
+  // sum together the encoded bits in bytes 2 to length
+  // 1110xxxx 10[cccccc] 10[bbbbbb] 10[aaaaaa]
+  //
+  //    value = [cccccc] | [bbbbbb] | [aaaaaa]
+  for (; idx > 0; shift += 6, idx--) {
+    if ((data[idx] & 0xc0) !== 0x80) {
+      return null; // each byte should have leading 10xxxxxx
+    }
+    value |= (data[idx] & 0x3f) << shift; // add the encoded bits
+  }
+
+  // read the final encoded bits in byte 1
+  //     1110[dddd] 10[cccccc] 10[bbbbbb] 10[aaaaaa]
+  //
+  // value = [dddd] | [cccccc] | [bbbbbb] | [aaaaaa]
+  value |= (data[idx] & (0x7f >> length)) << shift;
+
+  return { value, length };
+}
+
+export function getHeaderFromUint8Array(data, headerCache) {
+  const codecParserStub = {
+    readRawData: function* () {
+      return data;
+    },
+  };
+
+  return getHeader(codecParserStub as CodecParser /* TODO: Interface */, headerCache, 0).next().value;
+}
+
 export default class FLACHeader extends CodecHeader {
   streamInfo: Uint8Array;
   crc16: number;
-  // https://datatracker.ietf.org/doc/html/rfc3629#section-3
-  //    Char. number range  |        UTF-8 octet sequence
-  //    (hexadecimal)    |              (binary)
-  // --------------------+---------------------------------------------
-  // 0000 0000-0000 007F | 0xxxxxxx
-  // 0000 0080-0000 07FF | 110xxxxx 10xxxxxx
-  // 0000 0800-0000 FFFF | 1110xxxx 10xxxxxx 10xxxxxx
-  // 0001 0000-0010 FFFF | 11110xxx 10xxxxxx 10xxxxxx 10xxxxxx
-  static decodeUTF8Int(data) {
-    if (data[0] > 0xfe) {
-      return null; // length byte must have at least one zero as the lsb
-    }
-
-    if (data[0] < 0x80) return { value: data[0], length: 1 };
-
-    // get length by counting the number of msb that are set to 1
-    let length = 1;
-    for (let zeroMask = 0x40; zeroMask & data[0]; zeroMask >>= 1) length++;
-
-    let idx = length - 1,
-      value = 0,
-      shift = 0;
-
-    // sum together the encoded bits in bytes 2 to length
-    // 1110xxxx 10[cccccc] 10[bbbbbb] 10[aaaaaa]
-    //
-    //    value = [cccccc] | [bbbbbb] | [aaaaaa]
-    for (; idx > 0; shift += 6, idx--) {
-      if ((data[idx] & 0xc0) !== 0x80) {
-        return null; // each byte should have leading 10xxxxxx
-      }
-      value |= (data[idx] & 0x3f) << shift; // add the encoded bits
-    }
-
-    // read the final encoded bits in byte 1
-    //     1110[dddd] 10[cccccc] 10[bbbbbb] 10[aaaaaa]
-    //
-    // value = [dddd] | [cccccc] | [bbbbbb] | [aaaaaa]
-    value |= (data[idx] & (0x7f >> length)) << shift;
-
-    return { value, length };
-  }
-
-  // TODO: Extract to function
-  static getHeaderFromUint8Array(data, headerCache) {
-    const codecParserStub = {
-      readRawData: function* () {
-        return data;
-      },
-    };
-
-    return getHeader(codecParserStub, headerCache, 0).next().value;
-  }
-
-  /**
-   * @private
-   * Call FLACHeader.getHeader(Array<Uint8>) to get instance
-   */
-  constructor(header) {
+  
+  constructor(header: RawFLACHeader) {
     super(header);
 
-    this.crc16 = null; // set in FLACFrame
+    this.crc16 = null!; // set in FLACFrame
     this.blockingStrategy = header.blockingStrategy;
     this.blockSize = header.blockSize;
     this.frameNumber = header.frameNumber;
     this.sampleNumber = header.sampleNumber;
-    this.streamInfo = null; // set during ogg parsing
+    this.streamInfo = null!; // set during ogg parsing
   }
+
+  blockingStrategy;
+  blockSize;
+  frameNumber;
+  sampleNumber;
 }

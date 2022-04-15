@@ -150,7 +150,7 @@ const concatBuffers = (...buffers: Uint8Array[]) => {
   return buffer;
 };
 
-const bytesToString = (bytes: number[]) => String.fromCharCode(...bytes);
+const bytesToString = (bytes: number[] | Uint8Array) => String.fromCharCode(...bytes);
 
 // prettier-ignore
 const reverseTable = [0x0,0x8,0x4,0xc,0x2,0xa,0x6,0xe,0x1,0x9,0x5,0xd,0x3,0xb,0x7,0xf];
@@ -158,26 +158,19 @@ const reverse = (val: number) =>
   (reverseTable[val & 0b1111] << 4) | reverseTable[val >> 4];
 
 class BitReader {
-  constructor(data) {
-    this._data = data;
-    this._pos = data.length * 8;
+  private position: number;
+
+  constructor(private data: Uint8Array) {
+    this.position = data.length * 8;
   }
 
-  set position(position) {
-    this._pos = position;
-  }
-
-  get position() {
-    return this._pos;
-  }
-
-  read(bits) {
-    const byte = Math.floor(this._pos / 8);
-    const bit = this._pos % 8;
-    this._pos -= bits;
+  read(bits: number) {
+    const byte = Math.floor(this.position / 8);
+    const bit = this.position % 8;
+    this.position -= bits;
 
     const window =
-      (reverse(this._data[byte - 1]) << 8) + reverse(this._data[byte]);
+      (reverse(this.data[byte - 1]) << 8) + reverse(this.data[byte]);
 
     return (window >> (7 - bit)) & 0xff;
   }
