@@ -21,9 +21,7 @@ import { headerStore } from "../globals";
 import { RawHeader } from "../types";
 
 export type RawCodecHeader = RawHeader & {
-  bitDepth: number;
-
-  bitrate: number;
+  bitDepth: number;  
 
   channels: number;
 

@@ -173,8 +173,7 @@ function makeHeader(data: Uint8Array): StaticHeader | undefined {
     copyrightIdStart,
     bitDepth: 16,
     samples: 1024,
-    numberAACFrames,
-    bitrate: 0 // TODO:
+    numberAACFrames
   };
 }
 

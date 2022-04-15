@@ -17,9 +17,6 @@
 */
 
 import {
-  reserved,
-  // bad,
-  // free,
   none,
   sixteenBitCRC,
   monophonic,
@@ -84,15 +81,7 @@ type Layer3Info = {
   modeExtensions: [L3ME, L3ME, L3ME, L3ME];
 }
 
-
-type LayerBitrates = [undefined, number, number, number, number, number, number, number, number, number, number, number, number, number, number, -1];
-
-type VersionSpecificLayer = {
-  bitrates: LayerBitrates;
-  samples: number;
-}
-
-const layers: [undefined, Layer3Info, Layer2Info, Layer1Info] = [
+const layerInfos: [undefined, Layer3Info, Layer2Info, Layer1Info] = [
   undefined,
   {
     layer: 3,
@@ -113,6 +102,13 @@ const layers: [undefined, Layer3Info, Layer2Info, Layer1Info] = [
     modeExtensions: layer12ModeExtensions as any, // TODO:
   },
 ];
+
+type LayerBitrates = [undefined, number, number, number, number, number, number, number, number, number, number, number, number, number, number, -1];
+
+type VersionSpecificLayer = {
+  bitrates: LayerBitrates;
+  samples: number;
+}
 
 type VersionSpecificLayers = [undefined, VersionSpecificLayer, VersionSpecificLayer, VersionSpecificLayer];
 
@@ -163,7 +159,7 @@ const mpegVersions: [MpegVersion, undefined, MpegVersion, MpegVersion] = [
   },
 ];
 
-const emphasis = ["none", "50/15 ms", "reserved", "CCIT J.17"] as const;
+const emphasis = ["none", "50/15 ms", undefined, "CCIT J.17"] as const; 
 
 export type Emphasis = typeof emphasis[number];
 
@@ -186,6 +182,7 @@ type RawMPEGHeader = RawCodecHeader & {
   isCopyrighted: boolean;
   isOriginal: boolean;
   emphasis: Emphasis;
+  bitrate: number;  
 }
 
 export function* getHeader(codecParser: ICodecParser, headerCache: HeaderCache, readOffset: number) {
@@ -228,7 +225,7 @@ export function* getHeader(codecParser: ICodecParser, headerCache: HeaderCache, 
   // Layer (I, II, III)
   const layerBits = (data[1] & 0b00000110) >> 1;
 
-  const layer = layers[layerBits];
+  const layer = layerInfos[layerBits];
   if (!layer) return;
   
 
@@ -277,7 +274,7 @@ export function* getHeader(codecParser: ICodecParser, headerCache: HeaderCache, 
   header.isOriginal = Boolean(data[3] & 0b00000100);
 
   header.emphasis = emphasis[data[3] & 0b00000011];
-  if (header.emphasis === reserved) return;
+  if (!header.emphasis) return;
 
   header.bitDepth = 16;
 
